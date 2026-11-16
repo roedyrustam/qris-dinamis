@@ -93,6 +93,8 @@ const ingestNotificationSchema = z.object({
   raw: z.record(z.unknown()).optional(),
 });
 
+const parsePreviewSchema = ingestNotificationSchema.omit({ merchantId: true });
+
 const simulatePaySchema = z.object({
   transactionId: z.string().min(1),
 });
@@ -436,6 +438,20 @@ export function createApp(db: AppDatabase) {
   });
 
   // --- Pluggable Payment Notification Ingest ---
+  app.get('/v1/ingest/adapters', (c) => {
+    return c.json({ adapters: verifierRegistry.listAdapters() });
+  });
+
+  app.post('/v1/ingest/parse-preview', async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = parsePreviewSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: parsed.error.issues[0]?.message ?? 'Invalid request body' }, 400);
+    }
+    const extracted = verifierRegistry.extract(parsed.data);
+    return c.json({ extracted });
+  });
+
   app.post('/v1/ingest/notification', requireApiKey, async (c) => {
     const body = await c.req.json().catch(() => null);
     const parsed = ingestNotificationSchema.safeParse(body);
@@ -511,6 +527,8 @@ export function createApp(db: AppDatabase) {
     return c.json({
       matched: Boolean(transaction),
       extractedAmount: extracted.amount,
+      adapter: extracted.adapter ?? null,
+      reference: extracted.reference ?? null,
       transaction,
       webhookTriggered,
     });

@@ -1,3 +1,13 @@
+import {
+  bankEwalletAdapters,
+  ConfigurableNotificationAdapter,
+  isOutgoingNotification,
+  parseIndonesianAmount,
+  type AdapterMetadata,
+} from './bank-ewallet-adapters.js';
+
+export { parseIndonesianAmount, isOutgoingNotification };
+
 export interface IngestPayload {
   source: string;
   amount?: number;
@@ -10,31 +20,13 @@ export interface ExtractedPayment {
   amount: number;
   reference?: string;
   source: string;
+  adapter?: string;
 }
 
 export interface PaymentVerifierAdapter {
   readonly name: string;
   supports(source: string): boolean;
   extract(payload: IngestPayload): ExtractedPayment | null;
-}
-
-/**
- * Parses IDR amounts from Indonesian bank & e-wallet push notifications
- * (e.g., "Pembayaran QRIS Rp 50.123 berhasil", "Dana masuk Rp50,123", "IDR 50123").
- */
-export function parseIndonesianAmount(text: string): number | null {
-  const currencyMatch = text.match(/(?:rp\.?|idr)\s*([\d.,]+)/i);
-  const candidate = currencyMatch?.[1] ?? text.match(/\b(\d{1,3}(?:[.,]\d{3})+|\d{4,})\b/)?.[1];
-  if (!candidate) return null;
-
-  // Strip thousand separators (dot or comma followed by 3 digits) and decimal .00 / ,00
-  const cleaned = candidate
-    .replace(/([.,]00)$/, '')
-    .replace(/[.,](?=\d{3}(?:\D|$))/g, '')
-    .replace(/[^\d]/g, '');
-
-  const parsed = Number.parseInt(cleaned, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
 export class IndonesianNotificationAdapter implements PaymentVerifierAdapter {
@@ -50,16 +42,22 @@ export class IndonesianNotificationAdapter implements PaymentVerifierAdapter {
         amount: Math.round(payload.amount),
         reference: payload.reference,
         source: payload.source,
+        adapter: this.name,
       };
     }
 
     if (payload.text) {
+      if (isOutgoingNotification(payload.text)) {
+        return null;
+      }
       const amount = parseIndonesianAmount(payload.text);
       if (amount !== null) {
+        const refMatch = payload.text.match(/\b(?:ref(?:erence)?|no\.?\s*ref|rrn|order)\s*[:#]?\s*([A-Z0-9_-]{4,32})/i);
         return {
           amount,
-          reference: payload.reference,
+          reference: payload.reference ?? refMatch?.[1]?.trim(),
           source: payload.source,
+          adapter: this.name,
         };
       }
     }
@@ -69,19 +67,61 @@ export class IndonesianNotificationAdapter implements PaymentVerifierAdapter {
 }
 
 export class VerifierRegistry {
-  private readonly adapters: PaymentVerifierAdapter[] = [new IndonesianNotificationAdapter()];
+  private readonly adapters: PaymentVerifierAdapter[] = [
+    ...bankEwalletAdapters,
+    new IndonesianNotificationAdapter(),
+  ];
 
   register(adapter: PaymentVerifierAdapter): void {
     this.adapters.unshift(adapter);
   }
 
+  listAdapters(): AdapterMetadata[] {
+    return this.adapters.map((adapter) => {
+      if (adapter instanceof ConfigurableNotificationAdapter) {
+        return {
+          name: adapter.name,
+          displayName: adapter.displayName,
+          aliases: adapter.aliases,
+        };
+      }
+      return {
+        name: adapter.name,
+        displayName: 'Generic Indonesian Notification Fallback',
+        aliases: ['android-notif', 'auto', '*'],
+      };
+    });
+  }
+
   extract(payload: IngestPayload): ExtractedPayment | null {
+    const normalizedSource = payload.source.trim().toLowerCase();
+
+    // 1. Exact source alias match first (excluding generic fallback)
     for (const adapter of this.adapters) {
-      if (adapter.supports(payload.source)) {
+      if (adapter.name !== 'indonesian-notification' && adapter.supports(normalizedSource)) {
         const result = adapter.extract(payload);
         if (result) return result;
       }
     }
+
+    // 2. Auto-detect bank/e-wallet from notification text for generic sources
+    if (payload.text && (normalizedSource === 'android-notif' || normalizedSource === 'auto')) {
+      for (const adapter of this.adapters) {
+        if (adapter instanceof ConfigurableNotificationAdapter && adapter.matchesText(payload.text)) {
+          const result = adapter.extract(payload);
+          if (result) return result;
+        }
+      }
+    }
+
+    // 3. Fallback to any remaining supporting adapter (including generic IndonesianNotificationAdapter)
+    for (const adapter of this.adapters) {
+      if (adapter.supports(normalizedSource)) {
+        const result = adapter.extract(payload);
+        if (result) return result;
+      }
+    }
+
     return null;
   }
 }

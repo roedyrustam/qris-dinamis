@@ -1,0 +1,28 @@
+{
+  "name": "@qris-dinamis/cli",
+  "version": "1.1.0",
+  "description": "CLI tool for converting, validating, and inspecting QRIS strings and testing signed webhooks",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "qris-dinamis": "./dist/bin.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@qris-dinamis/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10"
+  }
+}

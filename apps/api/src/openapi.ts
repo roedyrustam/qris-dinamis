@@ -135,6 +135,35 @@ export const openApiSpec = {
         responses: { '200': { description: 'Transaction details' } },
       },
     },
+    '/v1/ingest/adapters': {
+      get: {
+        summary: 'List Registered Bank & E-Wallet Notification Adapters',
+        responses: { '200': { description: 'Array of supported verifier adapters and aliases' } },
+      },
+    },
+    '/v1/ingest/parse-preview': {
+      post: {
+        summary: 'Dry-run Notification Parser (No DB Mutation)',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['source'],
+                properties: {
+                  source: { type: 'string', example: 'bca' },
+                  amount: { type: 'number' },
+                  text: { type: 'string', example: 'QRIS BCA Rp 50.123 BERHASIL Ref: ABC123' },
+                  reference: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: { '200': { description: 'Extracted amount, adapter, and reference' } },
+      },
+    },
     '/v1/ingest/notification': {
       post: {
         summary: 'Ingest Payment Notification (Android Listener / Mutasi Parser)',

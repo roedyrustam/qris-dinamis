@@ -11,7 +11,8 @@ The repository is structured as a `pnpm` workspace monorepo:
 | Package / App | Name | Description |
 | :--- | :--- | :--- |
 | `packages/core` | `@qris-dinamis/core` | EMVCo TLV parser/serializer, QRIS validator, Static-to-Dynamic converter (Tags `01`, `54`, `55–57`, `63`), QR renderers (`SVG`, `PNG DataURL`, `Terminal`), HMAC-SHA256 webhook signer/verifier, and typed `QrisDinamisClient` SDK. See [packages/core/README.md](./packages/core/README.md). |
-| `apps/api` | `@qris-dinamis/api` | Hono REST API + Drizzle ORM (`@libsql/client` SQLite zero-config or PostgreSQL) with idempotent transaction generation, anti-collision unique codes (`1..999`), TTL expiration, QR image decoding (`jimp` + `jsqr`), pluggable payment notification verifier, sandbox simulator, HMAC-SHA256 webhook delivery with exponential backoff, rate limiting, optional API key auth, and OpenAPI 3.1 Scalar docs (`/docs`). |
+| `packages/cli` | `@qris-dinamis/cli` | CLI tool (`qris-dinamis`) for converting, validating, and inspecting QRIS strings (`string`, `svg`, `terminal`, `json`) and signing/verifying/testing HMAC-SHA256 webhooks from the terminal. See [packages/cli/README.md](./packages/cli/README.md). |
+| `apps/api` | `@qris-dinamis/api` | Hono REST API + Drizzle ORM (`@libsql/client` SQLite zero-config or PostgreSQL) with idempotent transaction generation, anti-collision unique codes (`1..999`), TTL expiration, QR image decoding (`jimp` + `jsqr`), 8 Indonesian Bank & E-Wallet notification verifier adapters (`BCA`, `BRI`, `Mandiri`, `BNI`, `GoPay`, `OVO`, `DANA`, `ShopeePay`), sandbox simulator, HMAC-SHA256 webhook delivery with exponential backoff, rate limiting, optional API key auth, and OpenAPI 3.1 Scalar docs (`/docs`). |
 | `apps/web` | `@qris-dinamis/web` | React 19 + Vite dashboard featuring an interactive Static-to-Dynamic Playground (with QR image upload & TLV inspection), Merchant & API Key manager, Transaction & Sandbox monitor, Webhook Delivery Inspector with manual retry, and legal routes (`/privacy`, `/terms`, `/delete-account`). |
 
 ---
@@ -49,6 +50,37 @@ Once running locally:
 - **REST API:** `http://localhost:3001`
 - **Interactive OpenAPI Docs (Scalar UI):** `http://localhost:3001/docs`
 - **Healthcheck:** `http://localhost:3001/health`
+
+---
+
+## CLI Tool (`@qris-dinamis/cli`)
+
+Run the CLI directly from the workspace after building (`pnpm build`):
+
+```bash
+# Convert static QRIS to dynamic QRIS with amount & fixed fee
+pnpm --filter @qris-dinamis/cli exec qris-dinamis convert "<STATIC_QRIS>" --amount 50000 --fee fixed:1500
+
+# Render dynamic QRIS as SVG file or Terminal ASCII
+pnpm --filter @qris-dinamis/cli exec qris-dinamis convert "<STATIC_QRIS>" -a 50000 -f svg -o qris.svg
+pnpm --filter @qris-dinamis/cli exec qris-dinamis convert "<STATIC_QRIS>" -a 50000 -f terminal
+
+# Validate & inspect all EMVCo TLV tags
+pnpm --filter @qris-dinamis/cli exec qris-dinamis inspect "<QRIS>"
+
+# Sign, verify, or send a signed test webhook
+pnpm --filter @qris-dinamis/cli exec qris-dinamis webhook test --url http://localhost:3001/webhook --secret whsec_123 --amount 50123
+```
+
+---
+
+## Bank & E-Wallet Notification Adapters
+
+`POST /v1/ingest/notification` and `POST /v1/ingest/parse-preview` support dedicated parsers for Indonesian banks & e-wallets (plus automatic detection from notification text when `source` is `android-notif` or `auto`):
+
+- **Banks:** `bca` (`mybca`, `bca-mobile`, `klikbca`), `bri` (`brimo`, `brilink`), `mandiri` (`livin`, `livin-merchant`, `kopra`), `bni` (`wondr`, `bni-mobile`)
+- **E-Wallets:** `gopay` (`gobiz`, `gopay-merchant`), `ovo` (`ovo-merchant`, `grab-merchant`), `dana` (`dana-bisnis`, `dana-merchant`), `shopeepay` (`shopee-partner`, `spay`)
+- **Discovery & Dry-Run:** Use `GET /v1/ingest/adapters` to list registered adapters and `POST /v1/ingest/parse-preview` to test notification extraction without mutating transactions.
 
 ---
 
