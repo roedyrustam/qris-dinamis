@@ -28,4 +28,6 @@ export {
   type CreateMerchantInput,
   type GenerateQrisInput,
   type TransactionRecord,
+  type MerchantStats,
+  type IngestAdapterInfo,
 } from './client.js';

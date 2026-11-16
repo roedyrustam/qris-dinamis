@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.0] - 2026-11-16
+
+### Added
+- **Typed SDK Parity (`@qris-dinamis/core`)**: Added `getMerchantStats`, `rotateMerchantKeys`, `listIngestAdapters`, `parseIngestPreview`, `ingestPgWebhook`, and `getTransactionEventsUrl` to `QrisDinamisClient`.
+- **Repository & CI Optimization**: Added `.github/dependabot.yml`, `.github/PULL_REQUEST_TEMPLATE.md`, `.github/ISSUE_TEMPLATE/bug_report.md`, and deduplicated CI/Release workflow triggers with `concurrency` cancellation.
+
 ## [1.6.0] - 2026-11-16
 
 ### Added

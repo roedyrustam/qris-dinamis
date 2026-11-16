@@ -141,4 +141,34 @@ describe('@qris-dinamis/core', () => {
     expect(info.currencyCode).toBe('360');
     expect(info.countryCode).toBe('ID');
   });
+
+  it('QrisDinamisClient calls stats, rotate-keys, adapters, parse-preview, pg ingest, and SSE URL', async () => {
+    const { QrisDinamisClient } = await import('../index.js');
+    const calls: string[] = [];
+    const client = new QrisDinamisClient({
+      baseUrl: 'https://api.example.com/',
+      apiKey: 'qris_live_test',
+      fetchImpl: async (url) => {
+        calls.push(String(url));
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      },
+    });
+
+    await client.getMerchantStats('m_1');
+    await client.rotateMerchantKeys('m_1', { rotateApiKey: true });
+    await client.listIngestAdapters();
+    await client.parseIngestPreview({ source: 'bca', text: 'Rp 50.000' });
+    await client.ingestPgWebhook('doku', { order: { amount: 50000 } }, { merchantId: 'm_1' });
+
+    expect(calls).toEqual([
+      'https://api.example.com/v1/merchants/m_1/stats',
+      'https://api.example.com/v1/merchants/m_1/rotate-keys',
+      'https://api.example.com/v1/ingest/adapters',
+      'https://api.example.com/v1/ingest/parse-preview',
+      'https://api.example.com/v1/ingest/pg/doku?merchantId=m_1',
+    ]);
+    expect(client.getTransactionEventsUrl('tx_123')).toBe(
+      'https://api.example.com/v1/transactions/tx_123/events',
+    );
+  });
 });

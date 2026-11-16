@@ -1,6 +1,6 @@
 {
   "name": "@qris-dinamis/cli",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "CLI tool for converting, validating, and inspecting QRIS strings and testing signed webhooks",
   "license": "MIT",
   "repository": {

@@ -24,6 +24,26 @@ export interface GenerateQrisInput {
   metadata?: Record<string, unknown>;
 }
 
+export interface MerchantStats {
+  merchantId: string;
+  totalTransactions: number;
+  counts: {
+    PENDING: number;
+    PAID: number;
+    EXPIRED: number;
+    FAILED: number;
+  };
+  totalPaidAmount: number;
+  totalUniqueCodeCollected: number;
+  conversionRate: number;
+}
+
+export interface IngestAdapterInfo {
+  name: string;
+  displayName: string;
+  aliases: string[];
+}
+
 export interface TransactionRecord {
   id: string;
   merchantId: string;
@@ -131,12 +151,62 @@ export class QrisDinamisClient {
     text?: string;
     reference?: string;
   }) {
-    return this.request<{ matched: boolean; transaction?: TransactionRecord }>(
+    return this.request<{ matched: boolean; adapter?: string | null; transaction?: TransactionRecord }>(
       '/v1/ingest/notification',
       {
         method: 'POST',
         body: JSON.stringify(input),
       },
     );
+  }
+
+  listIngestAdapters() {
+    return this.request<{ adapters: IngestAdapterInfo[] }>('/v1/ingest/adapters');
+  }
+
+  parseIngestPreview(input: { source: string; amount?: number; text?: string; reference?: string }) {
+    return this.request<{
+      extracted: { amount: number; reference?: string; source: string; adapter?: string } | null;
+    }>('/v1/ingest/parse-preview', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  ingestPgWebhook(
+    provider: 'doku' | 'snap-bi' | 'midtrans',
+    payload: Record<string, unknown>,
+    options?: { merchantId?: string; headers?: Record<string, string> },
+  ) {
+    const query = options?.merchantId ? `?merchantId=${encodeURIComponent(options.merchantId)}` : '';
+    return this.request<{ matched: boolean; provider: string; transaction?: TransactionRecord }>(
+      `/v1/ingest/pg/${provider}${query}`,
+      {
+        method: 'POST',
+        headers: options?.headers,
+        body: JSON.stringify(payload),
+      },
+    );
+  }
+
+  getMerchantStats(merchantId: string) {
+    return this.request<MerchantStats>(`/v1/merchants/${encodeURIComponent(merchantId)}/stats`);
+  }
+
+  rotateMerchantKeys(
+    merchantId: string,
+    options?: { rotateApiKey?: boolean; rotateWebhookSecret?: boolean },
+  ) {
+    return this.request<{
+      merchant: Record<string, unknown>;
+      rotated: { apiKey: boolean; webhookSecret: boolean };
+    }>(`/v1/merchants/${encodeURIComponent(merchantId)}/rotate-keys`, {
+      method: 'POST',
+      body: JSON.stringify(options ?? {}),
+    });
+  }
+
+  getTransactionEventsUrl(transactionId: string): string {
+    return `${this.baseUrl}/v1/transactions/${encodeURIComponent(transactionId)}/events`;
   }
 }
