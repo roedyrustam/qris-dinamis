@@ -1,8 +1,28 @@
 {
   "name": "qris-dinamis-monorepo",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
-  "description": "QRIS Static-to-Dynamic SDK, REST API & Webhook Engine",
+  "description": "QRIS Static-to-Dynamic SDK, CLI, REST API & Webhook Engine",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/roedyrustam/qris-dinamis.git"
+  },
+  "homepage": "https://github.com/roedyrustam/qris-dinamis#readme",
+  "bugs": {
+    "url": "https://github.com/roedyrustam/qris-dinamis/issues"
+  },
+  "keywords": [
+    "qris",
+    "qris-dinamis",
+    "emvco",
+    "indonesia-payment",
+    "payment-gateway",
+    "webhook",
+    "hono",
+    "typescript",
+    "cli"
+  ],
   "scripts": {
     "build": "pnpm -r --stream build",
     "dev": "pnpm --parallel --filter @qris-dinamis/api --filter @qris-dinamis/web dev",

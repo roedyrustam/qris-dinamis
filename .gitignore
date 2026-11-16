@@ -4,5 +4,7 @@ dist
 *.db
 *.db-shm
 *.db-wal
+*.log
+*.tsbuildinfo
 .DS_Store
 coverage

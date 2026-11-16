@@ -1,7 +1,24 @@
 {
   "name": "@qris-dinamis/core",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "EMVCo QRIS Static-to-Dynamic converter, QR renderer, webhook verifier, and typed API client SDK",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/roedyrustam/qris-dinamis.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/roedyrustam/qris-dinamis/tree/main/packages/core#readme",
+  "keywords": [
+    "qris",
+    "qris-dinamis",
+    "emvco",
+    "crc16",
+    "tlv",
+    "indonesia",
+    "payment",
+    "webhook"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

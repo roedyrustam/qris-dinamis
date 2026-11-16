@@ -2,6 +2,21 @@
   "name": "@qris-dinamis/cli",
   "version": "1.1.0",
   "description": "CLI tool for converting, validating, and inspecting QRIS strings and testing signed webhooks",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/roedyrustam/qris-dinamis.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/roedyrustam/qris-dinamis/tree/main/packages/cli#readme",
+  "keywords": [
+    "qris",
+    "qris-dinamis",
+    "cli",
+    "emvco",
+    "webhook",
+    "indonesia"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

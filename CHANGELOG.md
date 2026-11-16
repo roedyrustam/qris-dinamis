@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-11-16
+
+### Added
+
+#### Bank & E-Wallet Notification Parser Suite (`@qris-dinamis/api`)
+- **8 Dedicated Verifier Adapters**: Added declarative adapters in `apps/api/src/verifiers/bank-ewallet-adapters.ts` for `bca` (`mybca`, `bca-mobile`, `klikbca`), `bri` (`brimo`, `brilink`), `mandiri` (`livin`, `livin-merchant`, `kopra`), `bni` (`wondr`, `bni-mobile`), `gopay` (`gobiz`, `gopay-merchant`), `ovo` (`ovo-merchant`, `grab-merchant`), `dana` (`dana-bisnis`, `dana-merchant`), and `shopeepay` (`shopee-partner`, `spay`).
+- **Auto-Detection & Outgoing Guardrail**: Automatically detects bank/e-wallet providers from notification text when `source` is `android-notif` or `auto`, extracts transaction references (`Ref`, `No. Ref`, `Order #`, `Jurnal`, `SN`), and rejects outgoing/debit notifications to prevent false `PAID` transitions.
+- **Discovery & Dry-Run Endpoints**: Added `GET /v1/ingest/adapters` and `POST /v1/ingest/parse-preview` (documented in OpenAPI 3.1).
+
+#### CLI Tool (`@qris-dinamis/cli`)
+- Added `@qris-dinamis/cli` (`qris-dinamis`) supporting `convert` (`string`, `svg`, `terminal`, `json`), `validate`, `inspect`, and `webhook sign|verify|test`.
+
+#### Repository Optimization
+- Added `LICENSE` (MIT), npm/GitHub package metadata (`keywords`, `repository`, `bugs`, `homepage`), CI/license badges in `README.md`, and updated `.gitignore`.
+
 ## [1.0.0] - 2026-11-16
 
 ### Added
