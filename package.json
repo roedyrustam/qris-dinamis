@@ -30,7 +30,7 @@
     "typecheck": "pnpm -r --stream typecheck"
   },
   "devDependencies": {
-    "typescript": "^5.8.2",
+    "typescript": "^7.0.2",
     "vitest": "^3.0.9"
   },
   "engines": {
