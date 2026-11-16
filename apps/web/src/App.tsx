@@ -226,6 +226,15 @@ export default function App() {
     await refreshAll();
   }
 
+  async function handleRotateKeys(merchantId: string) {
+    await fetch(`/v1/merchants/${merchantId}/rotate-keys`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rotateApiKey: true, rotateWebhookSecret: true }),
+    });
+    await refreshAll();
+  }
+
   async function handleSimulatePay(transactionId: string) {
     await fetch('/v1/sandbox/simulate-pay', {
       method: 'POST',
@@ -554,6 +563,18 @@ export default function App() {
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
                       Secret: <span className="mono">{m.webhookSecret}</span>
                     </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                      API Key: <span className="mono">{m.apiKey}</span>
+                    </div>
+                    <div style={{ marginTop: 8 }}>
+                      <button
+                        className="btn"
+                        style={{ padding: '4px 10px', fontSize: 12 }}
+                        onClick={() => handleRotateKeys(m.id)}
+                      >
+                        <RefreshCw size={12} /> Rotate Keys
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -616,11 +637,29 @@ export default function App() {
           </form>
 
           <div className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 15 }}>Monitor Transaksi &amp; Sandbox</h2>
-              <button className="btn" onClick={refreshAll}>
-                <RefreshCw size={13} /> Refresh
-              </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 8, flexWrap: 'wrap' }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 15 }}>Monitor Transaksi &amp; Sandbox</h2>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
+                  Total: {transactions.length} | Paid: {transactions.filter((t) => t.status === 'PAID').length} | Omzet:{' '}
+                  {formatIdr(
+                    transactions
+                      .filter((t) => t.status === 'PAID')
+                      .reduce((sum, t) => sum + t.totalAmount, 0),
+                  )}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <a className="btn" href="/v1/qris/export?format=csv" download="qris-transactions.csv" style={{ textDecoration: 'none', fontSize: 12 }}>
+                  Export CSV
+                </a>
+                <a className="btn" href="/v1/qris/export?format=json" download="qris-transactions.json" style={{ textDecoration: 'none', fontSize: 12 }}>
+                  Export JSON
+                </a>
+                <button className="btn" onClick={refreshAll}>
+                  <RefreshCw size={13} /> Refresh
+                </button>
+              </div>
             </div>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>

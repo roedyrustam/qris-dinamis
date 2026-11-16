@@ -101,6 +101,19 @@ const simulatePaySchema = z.object({
   transactionId: z.string().min(1),
 });
 
+const rotateKeysSchema = z
+  .object({
+    rotateApiKey: z.boolean().default(true),
+    rotateWebhookSecret: z.boolean().default(true),
+  })
+  .default({});
+
+function escapeCsvCell(value: unknown): string {
+  const raw = value === null || value === undefined ? '' : String(value);
+  const safe = /^[=+\-@]/.test(raw) ? `'${raw}` : raw;
+  return `"${safe.replace(/"/g, '""')}"`;
+}
+
 export function createApp(db: AppDatabase) {
   const app = new Hono();
 
@@ -216,6 +229,77 @@ export function createApp(db: AppDatabase) {
       .returning();
     if (!deleted) return c.json({ error: 'Merchant not found' }, 404);
     return c.json({ deleted: true, id: deleted.id });
+  });
+
+  app.get('/v1/merchants/:id/stats', requireApiKey, async (c) => {
+    const id = c.req.param('id');
+    const [merchant] = await db.select({ id: merchants.id }).from(merchants).where(eq(merchants.id, id));
+    if (!merchant) return c.json({ error: 'Merchant not found' }, 404);
+
+    const rows = await db
+      .select({
+        status: transactions.status,
+        baseAmount: transactions.baseAmount,
+        uniqueCode: transactions.uniqueCode,
+        totalAmount: transactions.totalAmount,
+      })
+      .from(transactions)
+      .where(eq(transactions.merchantId, id));
+
+    const counts = { PENDING: 0, PAID: 0, EXPIRED: 0, FAILED: 0 };
+    let totalPaidAmount = 0;
+    let totalUniqueCodeCollected = 0;
+
+    for (const row of rows) {
+      if (row.status in counts) {
+        counts[row.status as keyof typeof counts]++;
+      }
+      if (row.status === 'PAID') {
+        totalPaidAmount += row.totalAmount;
+        totalUniqueCodeCollected += row.uniqueCode;
+      }
+    }
+
+    const totalTransactions = rows.length;
+    const conversionRate =
+      totalTransactions > 0 ? Number(((counts.PAID / totalTransactions) * 100).toFixed(2)) : 0;
+
+    return c.json({
+      merchantId: id,
+      totalTransactions,
+      counts,
+      totalPaidAmount,
+      totalUniqueCodeCollected,
+      conversionRate,
+    });
+  });
+
+  app.post('/v1/merchants/:id/rotate-keys', requireApiKey, async (c) => {
+    const id = c.req.param('id');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = rotateKeysSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: parsed.error.issues[0]?.message ?? 'Invalid request body' }, 400);
+    }
+
+    const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+    if (parsed.data.rotateApiKey) {
+      updates.apiKey = `qris_live_${randomBytes(18).toString('hex')}`;
+    }
+    if (parsed.data.rotateWebhookSecret) {
+      updates.webhookSecret = `whsec_${randomBytes(20).toString('hex')}`;
+    }
+
+    const [updated] = await db.update(merchants).set(updates).where(eq(merchants.id, id)).returning();
+    if (!updated) return c.json({ error: 'Merchant not found' }, 404);
+
+    return c.json({
+      merchant: updated,
+      rotated: {
+        apiKey: parsed.data.rotateApiKey,
+        webhookSecret: parsed.data.rotateWebhookSecret,
+      },
+    });
   });
 
   app.post('/v1/merchants/upload', async (c) => {
@@ -425,6 +509,71 @@ export function createApp(db: AppDatabase) {
         : await db.select().from(transactions).orderBy(desc(transactions.createdAt)).limit(100);
 
     return c.json({ transactions: rows });
+  });
+
+  app.get('/v1/qris/export', requireApiKey, async (c) => {
+    const merchantId = c.req.query('merchantId');
+    const status = c.req.query('status');
+    const format = c.req.query('format') === 'csv' ? 'csv' : 'json';
+
+    const conditions = [];
+    if (merchantId) conditions.push(eq(transactions.merchantId, merchantId));
+    if (status) conditions.push(eq(transactions.status, status));
+
+    const rows =
+      conditions.length > 0
+        ? await db
+            .select()
+            .from(transactions)
+            .where(and(...conditions))
+            .orderBy(desc(transactions.createdAt))
+            .limit(1000)
+        : await db.select().from(transactions).orderBy(desc(transactions.createdAt)).limit(1000);
+
+    if (format === 'json') {
+      c.header('Content-Disposition', 'attachment; filename="qris-transactions.json"');
+      return c.json({ transactions: rows });
+    }
+
+    const headers = [
+      'id',
+      'merchantId',
+      'externalId',
+      'baseAmount',
+      'uniqueCode',
+      'totalAmount',
+      'status',
+      'paidVia',
+      'paidReference',
+      'paidAt',
+      'expiresAt',
+      'createdAt',
+    ];
+    const lines = [
+      headers.join(','),
+      ...rows.map((r) =>
+        [
+          r.id,
+          r.merchantId,
+          r.externalId,
+          r.baseAmount,
+          r.uniqueCode,
+          r.totalAmount,
+          r.status,
+          r.paidVia,
+          r.paidReference,
+          r.paidAt,
+          r.expiresAt,
+          r.createdAt,
+        ]
+          .map(escapeCsvCell)
+          .join(','),
+      ),
+    ];
+
+    c.header('Content-Type', 'text/csv; charset=utf-8');
+    c.header('Content-Disposition', 'attachment; filename="qris-transactions.csv"');
+    return c.body(lines.join('\n'));
   });
 
   app.get('/v1/qris/:id', requireApiKey, async (c) => {

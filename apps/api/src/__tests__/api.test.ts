@@ -395,4 +395,78 @@ describe('@qris-dinamis/api integration', () => {
       client.close();
     }
   });
+
+  it('computes merchant stats, rotates keys, and exports transactions as CSV', async () => {
+    const { db, client } = await createDb('file::memory:');
+    try {
+      const app = createApp(db);
+
+      const mRes = await app.request('/v1/merchants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staticQris: buildStaticQris() }),
+      });
+      const { merchant } = (await mRes.json()) as {
+        merchant: { id: string; apiKey: string; webhookSecret: string };
+      };
+
+      // Generate 2 transactions and pay 1
+      const g1 = await app.request('/v1/qris/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ merchantId: merchant.id, amount: 40000, useUniqueCode: true }),
+      });
+      const tx1 = ((await g1.json()) as { transaction: { id: string; totalAmount: number } }).transaction;
+
+      await app.request('/v1/qris/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ merchantId: merchant.id, amount: 25000, useUniqueCode: false }),
+      });
+
+      await app.request('/v1/sandbox/simulate-pay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactionId: tx1.id }),
+      });
+
+      // 1. Stats
+      const statsRes = await app.request(`/v1/merchants/${merchant.id}/stats`);
+      expect(statsRes.status).toBe(200);
+      const stats = (await statsRes.json()) as {
+        totalTransactions: number;
+        counts: { PAID: number; PENDING: number };
+        totalPaidAmount: number;
+        conversionRate: number;
+      };
+      expect(stats.totalTransactions).toBe(2);
+      expect(stats.counts.PAID).toBe(1);
+      expect(stats.counts.PENDING).toBe(1);
+      expect(stats.totalPaidAmount).toBe(tx1.totalAmount);
+      expect(stats.conversionRate).toBe(50);
+
+      // 2. CSV Export
+      const csvRes = await app.request(`/v1/qris/export?merchantId=${merchant.id}&format=csv`);
+      expect(csvRes.status).toBe(200);
+      expect(csvRes.headers.get('content-type')).toContain('text/csv');
+      const csvText = await csvRes.text();
+      expect(csvText).toContain('id,merchantId,externalId,baseAmount');
+      expect(csvText).toContain(tx1.id);
+
+      // 3. Rotate keys
+      const rotRes = await app.request(`/v1/merchants/${merchant.id}/rotate-keys`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rotateApiKey: true, rotateWebhookSecret: true }),
+      });
+      expect(rotRes.status).toBe(200);
+      const rotJson = (await rotRes.json()) as {
+        merchant: { apiKey: string; webhookSecret: string };
+      };
+      expect(rotJson.merchant.apiKey).not.toBe(merchant.apiKey);
+      expect(rotJson.merchant.webhookSecret).not.toBe(merchant.webhookSecret);
+    } finally {
+      client.close();
+    }
+  });
 });

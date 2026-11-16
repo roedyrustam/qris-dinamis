@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-11-16
+
+### Added
+- **Merchant Analytics & Key Rotation (`@qris-dinamis/api`, `@qris-dinamis/web`)**:
+  - `GET /v1/merchants/:id/stats` returning transaction counts (`PENDING`, `PAID`, `EXPIRED`, `FAILED`), `totalPaidAmount`, `totalUniqueCodeCollected`, and `conversionRate`.
+  - `POST /v1/merchants/:id/rotate-keys` for rotating `apiKey` and/or `webhookSecret`.
+  - `GET /v1/qris/export?format=csv|json` with CSV formula-injection neutralization and attachment headers.
+  - Added **Rotate Keys**, **Export CSV/JSON**, and live summary metrics in `@qris-dinamis/web`.
+
+## [1.2.0] - 2026-11-16
+
+### Added
+- **Real-Time SSE Payment Status & Hosted Checkout (`/pay/:id`)**:
+  - Added `TransactionEventBus` (`apps/api/src/services/events.ts`) wired into `markTransactionPaid` and `expireStaleTransactions`.
+  - Added `GET /v1/transactions/:id/events` (`text/event-stream` SSE with 20s heartbeat and auto-close on terminal state).
+  - Added `CheckoutPage` (`/pay/:id`) in `@qris-dinamis/web` with live SSE status updates, countdown timer, unique code breakdown, and QR PNG download.
+
 ## [1.1.0] - 2026-11-16
 
 ### Added

@@ -63,6 +63,31 @@ export const openApiSpec = {
         responses: { '201': { description: 'Merchant created from QRIS image' } },
       },
     },
+    '/v1/merchants/{id}/stats': {
+      get: {
+        summary: 'Get Merchant Transaction Analytics & Conversion Rate',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'Merchant transaction counts, paid total, and conversion rate' } },
+      },
+    },
+    '/v1/merchants/{id}/rotate-keys': {
+      post: {
+        summary: 'Rotate Merchant API Key & Webhook Secret',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'Updated merchant with newly rotated keys' } },
+      },
+    },
+    '/v1/qris/export': {
+      get: {
+        summary: 'Export Transactions as CSV or JSON',
+        parameters: [
+          { name: 'merchantId', in: 'query', schema: { type: 'string' } },
+          { name: 'status', in: 'query', schema: { type: 'string' } },
+          { name: 'format', in: 'query', schema: { type: 'string', enum: ['csv', 'json'] } },
+        ],
+        responses: { '200': { description: 'CSV or JSON transaction export' } },
+      },
+    },
     '/v1/qris/decode-image': {
       post: {
         summary: 'Decode Static QRIS String from Uploaded Image (PNG/JPG or Base64)',
