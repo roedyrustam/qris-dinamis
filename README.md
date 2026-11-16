@@ -1,6 +1,9 @@
 # QRIS Dinamis — SDK, CLI, REST API & Webhook Engine
 
 [![CI](https://github.com/roedyrustam/qris-dinamis/actions/workflows/ci.yml/badge.svg)](https://github.com/roedyrustam/qris-dinamis/actions/workflows/ci.yml)
+[![Release](https://github.com/roedyrustam/qris-dinamis/actions/workflows/release.yml/badge.svg)](https://github.com/roedyrustam/qris-dinamis/actions/workflows/release.yml)
+[![npm core](https://img.shields.io/npm/v/@qris-dinamis/core?label=%40qris-dinamis%2Fcore)](https://www.npmjs.com/package/@qris-dinamis/core)
+[![npm cli](https://img.shields.io/npm/v/@qris-dinamis/cli?label=%40qris-dinamis%2Fcli)](https://www.npmjs.com/package/@qris-dinamis/cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20-339933.svg)](https://nodejs.org/)
@@ -20,6 +23,52 @@ The repository is structured as a `pnpm` workspace monorepo:
 | `packages/cli` | `@qris-dinamis/cli` | CLI tool (`qris-dinamis`) for converting, validating, and inspecting QRIS strings (`string`, `svg`, `terminal`, `json`) and signing/verifying/testing HMAC-SHA256 webhooks from the terminal. See [packages/cli/README.md](./packages/cli/README.md). |
 | `apps/api` | `@qris-dinamis/api` | Hono REST API + Drizzle ORM (`@libsql/client` SQLite zero-config or PostgreSQL) with idempotent transaction generation, anti-collision unique codes (`1..999`), TTL expiration, QR image decoding (`jimp` + `jsqr`), 8 Indonesian Bank & E-Wallet notification verifier adapters (`BCA`, `BRI`, `Mandiri`, `BNI`, `GoPay`, `OVO`, `DANA`, `ShopeePay`), sandbox simulator, HMAC-SHA256 webhook delivery with exponential backoff, rate limiting, optional API key auth, and OpenAPI 3.1 Scalar docs (`/docs`). |
 | `apps/web` | `@qris-dinamis/web` | React 19 + Vite dashboard featuring an interactive Static-to-Dynamic Playground (with QR image upload & TLV inspection), Merchant & API Key manager, Transaction & Sandbox monitor, Webhook Delivery Inspector with manual retry, and legal routes (`/privacy`, `/terms`, `/delete-account`). |
+
+---
+
+## Installation via NPM
+
+### 1. Core SDK (`@qris-dinamis/core`)
+
+```bash
+# npm
+npm install @qris-dinamis/core
+
+# pnpm
+pnpm add @qris-dinamis/core
+
+# yarn
+yarn add @qris-dinamis/core
+```
+
+Quick TypeScript usage:
+
+```ts
+import { convertStaticToDynamic, renderQrSvg, QrisDinamisClient } from '@qris-dinamis/core';
+
+// Stateless Static -> Dynamic QRIS conversion
+const { dynamicQris, crc, merchant } = convertStaticToDynamic(STATIC_QRIS, {
+  amount: 50000,
+  fee: { type: 'fixed', value: 1500 },
+});
+const svg = await renderQrSvg(dynamicQris);
+
+// Or connect to a self-hosted @qris-dinamis/api server
+const client = new QrisDinamisClient({
+  baseUrl: 'http://localhost:3001',
+  apiKey: process.env.QRIS_API_KEY,
+});
+```
+
+### 2. CLI Tool (`@qris-dinamis/cli`)
+
+```bash
+# Install globally
+npm install -g @qris-dinamis/cli
+
+# Or run directly without installing
+npx @qris-dinamis/cli convert "<STATIC_QRIS>" --amount 50000 --format terminal
+```
 
 ---
 
