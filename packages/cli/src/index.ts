@@ -30,6 +30,7 @@ Usage:
   qris-dinamis validate <qris> [--json]
   qris-dinamis inspect <qris> [--json]
   qris-dinamis webhook <sign|verify|test> [options]
+  qris-dinamis ingest --url <apiUrl> --source <src> --text <notif> [--merchant <id>] [--api-key <key>] [--preview]
 
 Convert Options:
   --amount, -a <number>    Transaction amount in IDR (required)
@@ -268,6 +269,51 @@ async function handleWebhook(args: string[], io: CliIo): Promise<number> {
   return 1;
 }
 
+async function handleIngest(args: string[], io: CliIo): Promise<number> {
+  const { values } = parseArgs({
+    args,
+    options: {
+      url: { type: 'string', default: 'http://localhost:3001' },
+      merchant: { type: 'string' },
+      source: { type: 'string', default: 'auto' },
+      text: { type: 'string' },
+      'api-key': { type: 'string' },
+      preview: { type: 'boolean', default: false },
+    },
+  });
+
+  if (!values.text) {
+    io.stderr('Error: --text is required for ingest');
+    return 1;
+  }
+  if (!values.preview && !values.merchant) {
+    io.stderr('Error: --merchant is required unless --preview is set');
+    return 1;
+  }
+
+  const baseUrl = (values.url ?? 'http://localhost:3001').replace(/\/+$/, '');
+  const endpoint = values.preview ? `${baseUrl}/v1/ingest/parse-preview` : `${baseUrl}/v1/ingest/notification`;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (values['api-key']) {
+    headers['X-Api-Key'] = values['api-key'];
+  }
+
+  const body = values.preview
+    ? { source: values.source, text: values.text }
+    : { merchantId: values.merchant, source: values.source, text: values.text };
+
+  const doFetch = io.fetchFn ?? fetch;
+  const res = await doFetch(endpoint, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  io.stdout(`HTTP ${res.status} ${res.statusText}`);
+  if (text) io.stdout(text);
+  return res.ok ? 0 : 1;
+}
+
 export async function runCli(argv: string[], io: CliIo = DEFAULT_IO): Promise<number> {
   const command = argv[0];
   if (!command || command === '--help' || command === '-h') {
@@ -289,6 +335,8 @@ export async function runCli(argv: string[], io: CliIo = DEFAULT_IO): Promise<nu
         return handleValidateOrInspect(argv.slice(1), true, io);
       case 'webhook':
         return await handleWebhook(argv.slice(1), io);
+      case 'ingest':
+        return await handleIngest(argv.slice(1), io);
       default:
         io.stderr(`Error: unknown command "${command}". Run with --help for usage.`);
         return 1;

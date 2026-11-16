@@ -95,4 +95,24 @@ describe('@qris-dinamis/cli', () => {
     expect(testRun.out[0]).toBe('HTTP 200 OK');
     expect(verifyWebhookSignature({ secret, signatureHeader: capturedSig, rawBody: capturedBody })).toBe(true);
   });
+
+  it('sends ingest parse-preview via CLI ingest --preview', async () => {
+    let capturedUrl = '';
+    const mockFetch: typeof fetch = async (url) => {
+      capturedUrl = String(url);
+      return new Response(JSON.stringify({ extracted: { amount: 50123, adapter: 'bca' } }), {
+        status: 200,
+        statusText: 'OK',
+      });
+    };
+
+    const ingestRun = createBufferIo(mockFetch);
+    const code = await runCli(
+      ['ingest', '--url', 'http://localhost:3001', '--source', 'bca', '--text', 'QRIS BCA Rp 50.123', '--preview'],
+      ingestRun.io,
+    );
+    expect(code).toBe(0);
+    expect(capturedUrl).toBe('http://localhost:3001/v1/ingest/parse-preview');
+    expect(ingestRun.out[0]).toBe('HTTP 200 OK');
+  });
 });

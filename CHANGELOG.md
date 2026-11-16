@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.0] - 2026-11-16
+
+### Added
+- **Android Notification Listener Companion (`examples/android-listener/`)**:
+  - Added `QrisNotificationListenerService.kt` (Kotlin `NotificationListenerService`) and `termux-bridge.sh` (Termux + Termux:API polling bridge) for forwarding BCA, BRI, Mandiri, BNI, GoBiz, OVO, DANA, and ShopeePay notifications to `/v1/ingest/notification`.
+- **CLI `ingest` Command (`@qris-dinamis/cli`)**:
+  - Added `qris-dinamis ingest` supporting `--preview` (`/v1/ingest/parse-preview`) and live `/v1/ingest/notification`.
+- **Environment Template**:
+  - Updated `.env.example` with `REQUIRE_API_KEY`, `RATE_LIMIT_MAX`, `DOKU_SECRET_KEY`, and `MIDTRANS_SERVER_KEY`.
+
 ## [1.4.0] - 2026-11-16
 
 ### Added
