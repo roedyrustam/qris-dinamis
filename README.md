@@ -146,3 +146,12 @@ Configure via `.env` or container environment variables:
 - [Core SDK README (packages/core/README.md)](./packages/core/README.md) — NPM installation and TypeScript usage guide.
 - [CLI README (packages/cli/README.md)](./packages/cli/README.md) — Terminal conversion, inspection, and webhook testing guide.
 - [Changelog (CHANGELOG.md)](./CHANGELOG.md) — Release notes.
+
+---
+
+## Contributing & Community
+
+Contributions are welcome! Please read:
+- [Contributing Guide (CONTRIBUTING.md)](./CONTRIBUTING.md) — Local setup, PR workflow, and how to add new bank/e-wallet adapters.
+- [Code of Conduct (CODE_OF_CONDUCT.md)](./CODE_OF_CONDUCT.md) — Community standards.
+- [Security Policy (SECURITY.md)](./SECURITY.md) — How to report security vulnerabilities responsibly.
