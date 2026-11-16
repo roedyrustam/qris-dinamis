@@ -1,0 +1,51 @@
+{
+  "name": "@qris-dinamis/react",
+  "version": "1.8.0",
+  "description": "Drop-in React checkout component and real-time SSE status hook for QRIS Dinamis",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/roedyrustam/qris-dinamis.git",
+    "directory": "packages/react"
+  },
+  "homepage": "https://github.com/roedyrustam/qris-dinamis/tree/main/packages/react#readme",
+  "keywords": [
+    "qris",
+    "qris-dinamis",
+    "react",
+    "checkout",
+    "sse",
+    "indonesia",
+    "payment"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0"
+  },
+  "dependencies": {
+    "@qris-dinamis/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.10",
+    "react": "^19.0.0"
+  }
+}

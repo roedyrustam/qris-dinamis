@@ -165,6 +165,41 @@ const BANK_EWALLET_CONFIGS: readonly BankAdapterConfig[] = [
     textKeywords: [/\b(?:shopeepay|shopee\s*partner|spay)\b/i],
     referencePatterns: [/\b(?:sn|ref|order)\s*[:#]?\s*([A-Z0-9-]{4,32})/i],
   },
+  {
+    name: 'bsi',
+    displayName: 'BSI / BYOND by BSI',
+    aliases: ['bsi', 'byond', 'bsi-mobile'],
+    textKeywords: [/\b(?:byond|bsi\s*mobile|bank\s*syariah\s*indonesia|bsi)\b/i],
+    referencePatterns: [/\b(?:ref|ft|no\.?\s*ref)\s*[:#]?\s*([A-Z0-9-]{4,32})/i],
+  },
+  {
+    name: 'jago',
+    displayName: 'Bank Jago',
+    aliases: ['jago', 'bank-jago'],
+    textKeywords: [/\b(?:bank\s*jago|jago)\b/i],
+    referencePatterns: [/\b(?:ref|id)\s*[:#]?\s*([A-Z0-9-]{4,32})/i],
+  },
+  {
+    name: 'seabank',
+    displayName: 'SeaBank Indonesia',
+    aliases: ['seabank', 'sea-bank'],
+    textKeywords: [/\b(?:seabank|sea\s*bank)\b/i],
+    referencePatterns: [/\b(?:ref|no\.?\s*transaksi)\s*[:#]?\s*([A-Z0-9-]{4,32})/i],
+  },
+  {
+    name: 'jenius',
+    displayName: 'Jenius / SMBC Indonesia',
+    aliases: ['jenius', 'btpn', 'smbc'],
+    textKeywords: [/\b(?:jenius|btpn)\b/i],
+    referencePatterns: [/\b(?:ref|id)\s*[:#]?\s*([A-Z0-9-]{4,32})/i],
+  },
+  {
+    name: 'cimb',
+    displayName: 'CIMB Niaga / OCTO Mobile',
+    aliases: ['cimb', 'octo', 'octo-mobile', 'octo-merchant'],
+    textKeywords: [/\b(?:octo\s*mobile|octo\s*merchant|cimb\s*niaga|cimb)\b/i],
+    referencePatterns: [/\b(?:ref|approval)\s*[:#]?\s*([A-Z0-9-]{4,32})/i],
+  },
 ];
 
 export const bankEwalletAdapters: readonly ConfigurableNotificationAdapter[] = BANK_EWALLET_CONFIGS.map(

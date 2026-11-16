@@ -69,6 +69,46 @@ describe('Bank & E-Wallet Notification Parser Suite', () => {
       expectedAdapter: 'shopeepay',
       expectedRef: 'SP9001',
     },
+    {
+      name: 'BSI / BYOND',
+      source: 'byond',
+      text: 'BSI Mobile: Pembayaran QRIS Rp 60.500 berhasil Ref: FT202611',
+      expectedAmount: 60500,
+      expectedAdapter: 'bsi',
+      expectedRef: 'FT202611',
+    },
+    {
+      name: 'Bank Jago',
+      source: 'jago',
+      text: 'Bank Jago: Dana masuk QRIS Rp 27.300 ID: JAGO882',
+      expectedAmount: 27300,
+      expectedAdapter: 'jago',
+      expectedRef: 'JAGO882',
+    },
+    {
+      name: 'SeaBank Indonesia',
+      source: 'seabank',
+      text: 'SeaBank: Pembayaran QRIS masuk Rp 14.900 No. Transaksi: SEA441',
+      expectedAmount: 14900,
+      expectedAdapter: 'seabank',
+      expectedRef: 'SEA441',
+    },
+    {
+      name: 'Jenius / BTPN',
+      source: 'jenius',
+      text: 'Jenius: Kamu menerima Rp 83.210 dari QRIS Ref: JEN009',
+      expectedAmount: 83210,
+      expectedAdapter: 'jenius',
+      expectedRef: 'JEN009',
+    },
+    {
+      name: 'CIMB Niaga / OCTO',
+      source: 'octo-mobile',
+      text: 'OCTO Mobile: Transaksi QRIS Rp 110.000 berhasil Approval: CIMB55',
+      expectedAmount: 110000,
+      expectedAdapter: 'cimb',
+      expectedRef: 'CIMB55',
+    },
   ];
 
   for (const tc of cases) {

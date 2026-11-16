@@ -13,8 +13,9 @@ import {
   Webhook,
 } from 'lucide-react';
 import { CheckoutPage } from './CheckoutPage';
+import { IngestInspector } from './IngestInspector';
 
-type Tab = 'playground' | 'merchants' | 'transactions' | 'webhooks' | 'privacy' | 'terms' | 'delete-account' | 'pay';
+type Tab = 'playground' | 'merchants' | 'transactions' | 'webhooks' | 'ingest' | 'privacy' | 'terms' | 'delete-account' | 'pay';
 
 interface Merchant {
   id: string;
@@ -296,6 +297,12 @@ export default function App() {
             onClick={() => navigate('webhooks')}
           >
             <Webhook size={14} /> Webhooks ({webhookLogs.length})
+          </button>
+          <button
+            className={`btn ${tab === 'ingest' ? 'btn-primary' : ''}`}
+            onClick={() => navigate('ingest')}
+          >
+            <ShieldCheck size={14} /> Ingest Tester
           </button>
           <a className="btn" href="/docs" target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
             OpenAPI Docs
@@ -733,6 +740,8 @@ export default function App() {
           }}
         />
       )}
+
+      {tab === 'ingest' && <IngestInspector />}
 
       {tab === 'webhooks' && (
         <div className="card">

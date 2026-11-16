@@ -669,6 +669,26 @@ export function createApp(db: AppDatabase) {
     return c.json({ adapters: verifierRegistry.listAdapters() });
   });
 
+  app.get('/v1/ingest/events', requireApiKey, async (c) => {
+    const merchantId = c.req.query('merchantId');
+    const status = c.req.query('status');
+    const conditions = [];
+    if (merchantId) conditions.push(eq(ingestEvents.merchantId, merchantId));
+    if (status) conditions.push(eq(ingestEvents.status, status));
+
+    const events =
+      conditions.length > 0
+        ? await db
+            .select()
+            .from(ingestEvents)
+            .where(and(...conditions))
+            .orderBy(desc(ingestEvents.createdAt))
+            .limit(50)
+        : await db.select().from(ingestEvents).orderBy(desc(ingestEvents.createdAt)).limit(50);
+
+    return c.json({ events });
+  });
+
   app.post('/v1/ingest/pg/:provider', async (c) => {
     const provider = c.req.param('provider') as PgProvider;
     if (provider !== 'doku' && provider !== 'snap-bi' && provider !== 'midtrans') {

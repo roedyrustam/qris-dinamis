@@ -1,12 +1,14 @@
 import { serve } from '@hono/node-server';
 import { createApp } from './app.js';
 import { createDb } from './db/client.js';
+import { transactionEvents } from './services/events.js';
 import { expireStaleTransactions } from './services/transaction.js';
 import { processDueWebhookRetries } from './services/webhook.js';
 
 const PORT = Number(process.env.PORT ?? 3001);
 
 async function main() {
+  transactionEvents.initFromEnv();
   const { db, client } = await createDb();
   const app = createApp(db);
 
@@ -33,11 +35,12 @@ async function main() {
     console.log(`Received ${signal}, shutting down gracefully...`);
     clearInterval(workerInterval);
 
-    server.close((err) => {
+    server.close(async (err) => {
       if (err) {
         console.error('Error closing HTTP server:', err);
       }
       try {
+        await transactionEvents.close();
         client.close();
       } catch (dbErr) {
         console.error('Error closing DB client:', dbErr);

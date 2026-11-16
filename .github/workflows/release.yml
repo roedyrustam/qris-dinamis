@@ -43,7 +43,7 @@ jobs:
           cache: pnpm
           registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @qris-dinamis/core build && pnpm --filter @qris-dinamis/cli build
+      - run: pnpm --filter @qris-dinamis/core build && pnpm --filter @qris-dinamis/cli build && pnpm --filter @qris-dinamis/react build
       - name: Publish @qris-dinamis/core if version not yet on npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -63,6 +63,16 @@ jobs:
             echo "@qris-dinamis/cli@${CLI_VER} is already published on npm, skipping."
           else
             pnpm --filter @qris-dinamis/cli publish --access public --no-git-checks --provenance
+          fi
+      - name: Publish @qris-dinamis/react if version not yet on npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          REACT_VER=$(node -p "require('./packages/react/package.json').version")
+          if npm view "@qris-dinamis/react@${REACT_VER}" version >/dev/null 2>&1; then
+            echo "@qris-dinamis/react@${REACT_VER} is already published on npm, skipping."
+          else
+            pnpm --filter @qris-dinamis/react publish --access public --no-git-checks --provenance
           fi
 
   docker:

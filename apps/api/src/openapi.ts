@@ -173,6 +173,16 @@ export const openApiSpec = {
         responses: { '200': { description: 'Array of supported verifier adapters and aliases' } },
       },
     },
+    '/v1/ingest/events': {
+      get: {
+        summary: 'List Recent Payment Notification Ingest Events',
+        parameters: [
+          { name: 'merchantId', in: 'query', schema: { type: 'string' } },
+          { name: 'status', in: 'query', schema: { type: 'string' } },
+        ],
+        responses: { '200': { description: 'Array of recent ingest events' } },
+      },
+    },
     '/v1/ingest/pg/{provider}': {
       post: {
         summary: 'Ingest Official Payment Gateway Webhook (DOKU, SNAP BI, Midtrans)',

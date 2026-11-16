@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.0] - 2026-11-16
+
+### Added
+- **Multi-Instance `RedisEventTransport` (`@qris-dinamis/api`)**: Zero-dependency RESP2 Redis Pub/Sub transport in `apps/api/src/services/events.ts`, auto-enabled via `REDIS_URL`.
+- **Drop-in React Package (`@qris-dinamis/react`)**: Added `packages/react` with `useQrisStatus` SSE hook and `<QrisCheckout />` component.
+- **Digital & Syariah Bank Adapters**: Added `bsi` (`byond`), `jago`, `seabank`, `jenius`, and `cimb` (`octo`) adapters to `bank-ewallet-adapters.ts`.
+- **Ingest Inspector (`@qris-dinamis/api`, `@qris-dinamis/web`)**: Added `GET /v1/ingest/events` and the **Ingest Tester** tab in `@qris-dinamis/web`.
+- **Full-Stack E2E Flow & Redis Transport Tests**: Added `apps/api/src/__tests__/e2e-flow.test.ts`.
+
 ## [1.7.0] - 2026-11-16
 
 ### Added
