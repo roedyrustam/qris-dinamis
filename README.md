@@ -87,6 +87,16 @@ pnpm --filter @qris-dinamis/cli exec qris-dinamis webhook test --url http://loca
 - **Banks:** `bca` (`mybca`, `bca-mobile`, `klikbca`), `bri` (`brimo`, `brilink`), `mandiri` (`livin`, `livin-merchant`, `kopra`), `bni` (`wondr`, `bni-mobile`)
 - **E-Wallets:** `gopay` (`gobiz`, `gopay-merchant`), `ovo` (`ovo-merchant`, `grab-merchant`), `dana` (`dana-bisnis`, `dana-merchant`), `shopeepay` (`shopee-partner`, `spay`)
 - **Discovery & Dry-Run:** Use `GET /v1/ingest/adapters` to list registered adapters and `POST /v1/ingest/parse-preview` to test notification extraction without mutating transactions.
+- **Android Companion:** See [examples/android-listener/README.md](./examples/android-listener/README.md) for Kotlin `NotificationListenerService` and Termux bridge examples.
+
+---
+
+## Real-Time SSE, Hosted Checkout & Official PG Adapters
+
+- **Live Payment Status (SSE):** Subscribe to `GET /v1/transactions/:id/events` (`text/event-stream`) for instant `PENDING` → `PAID` / `EXPIRED` updates without polling. Backed by a pluggable `EventBusTransport` in `apps/api/src/services/events.ts`.
+- **Hosted Checkout (`/pay/:id`):** Shareable payment page in `@qris-dinamis/web` with live countdown timer, unique code breakdown, QR PNG download, and real-time SSE confirmation.
+- **Analytics, Export & Key Rotation:** `GET /v1/merchants/:id/stats`, `GET /v1/qris/export?format=csv|json`, and `POST /v1/merchants/:id/rotate-keys`.
+- **Official PG Webhooks:** `POST /v1/ingest/pg/:provider` supports **DOKU Checkout** (HMAC-SHA256), **SNAP BI QRIS MPM Notify**, and **Midtrans** (SHA-512).
 
 ---
 

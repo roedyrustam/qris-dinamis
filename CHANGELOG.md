@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.0] - 2026-11-16
+
+### Added
+- **Pluggable EventBusTransport (`@qris-dinamis/api`)**: Refactored `apps/api/src/services/events.ts` with `EventBusTransport` and `InMemoryEventTransport` so multi-instance deployments can plug in Redis Pub/Sub or NATS transports.
+- **Drizzle Kit Config**: Added `apps/api/drizzle.config.ts` supporting SQLite and PostgreSQL schema pushes.
+- **Documentation Sync**: Updated root `README.md` with SSE/Checkout, Analytics/Export/Key Rotation, Official PG adapters, and Android Notification Listener documentation.
+
 ## [1.5.0] - 2026-11-16
 
 ### Added

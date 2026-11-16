@@ -12,14 +12,25 @@ export interface TransactionStatusEvent {
   updatedAt: string;
 }
 
-class TransactionEventBus {
+/**
+ * Pluggable transport for multi-instance SSE fan-out (e.g. Redis Pub/Sub or NATS).
+ */
+export interface EventBusTransport {
+  publish(event: TransactionStatusEvent): void | Promise<void>;
+  subscribe(
+    transactionId: string,
+    listener: (event: TransactionStatusEvent) => void,
+  ): () => void;
+}
+
+export class InMemoryEventTransport implements EventBusTransport {
   private readonly emitter = new EventEmitter();
 
   constructor() {
     this.emitter.setMaxListeners(0);
   }
 
-  emit(event: TransactionStatusEvent): void {
+  publish(event: TransactionStatusEvent): void {
     this.emitter.emit(`tx:${event.transactionId}`, event);
   }
 
@@ -32,6 +43,25 @@ class TransactionEventBus {
     return () => {
       this.emitter.off(channel, listener);
     };
+  }
+}
+
+class TransactionEventBus {
+  private transport: EventBusTransport = new InMemoryEventTransport();
+
+  setTransport(transport: EventBusTransport): void {
+    this.transport = transport;
+  }
+
+  emit(event: TransactionStatusEvent): void {
+    void this.transport.publish(event);
+  }
+
+  subscribe(
+    transactionId: string,
+    listener: (event: TransactionStatusEvent) => void,
+  ): () => void {
+    return this.transport.subscribe(transactionId, listener);
   }
 }
 
