@@ -128,4 +128,5 @@ Configure via `.env` or container environment variables:
 - [Entity Relationship Diagram (ERD.md)](./ERD.md) — Database schema for `merchants`, `transactions`, `webhook_logs`, and `ingest_events`.
 - [Technical Documentation (DOCUMENTATION.md)](./DOCUMENTATION.md) — Endpoint reference and integration examples.
 - [Core SDK README (packages/core/README.md)](./packages/core/README.md) — NPM installation and TypeScript usage guide.
+- [CLI README (packages/cli/README.md)](./packages/cli/README.md) — Terminal conversion, inspection, and webhook testing guide.
 - [Changelog (CHANGELOG.md)](./CHANGELOG.md) — Release notes.
