@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-11-16
+
+### Added
+- **Official Payment Gateway Webhook Adapters (`@qris-dinamis/api`)**:
+  - Added `apps/api/src/verifiers/pg-adapters.ts` with HMAC-SHA256 verification for **DOKU Checkout**, **SNAP BI QRIS MPM Notify** parsing, and SHA-512 verification for **Midtrans**.
+  - Added `POST /v1/ingest/pg/:provider` (`doku`, `snap-bi`, `midtrans`) matching `PENDING` transactions by `externalId` or `merchantId` + `totalAmount`, documented in OpenAPI 3.1.
+- **Release CI/CD Workflow**:
+  - Added `.github/workflows/release.yml` for tag-triggered (`v*`) verification and multi-image GHCR Docker publishing (`qris-dinamis-api`, `qris-dinamis-web`).
+
 ## [1.3.0] - 2026-11-16
 
 ### Added

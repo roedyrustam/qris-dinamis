@@ -173,6 +173,24 @@ export const openApiSpec = {
         responses: { '200': { description: 'Array of supported verifier adapters and aliases' } },
       },
     },
+    '/v1/ingest/pg/{provider}': {
+      post: {
+        summary: 'Ingest Official Payment Gateway Webhook (DOKU, SNAP BI, Midtrans)',
+        parameters: [
+          {
+            name: 'provider',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', enum: ['doku', 'snap-bi', 'midtrans'] },
+          },
+          { name: 'merchantId', in: 'query', schema: { type: 'string' } },
+        ],
+        responses: {
+          '200': { description: 'PG webhook reconciliation result' },
+          '401': { description: 'Invalid provider signature' },
+        },
+      },
+    },
     '/v1/ingest/parse-preview': {
       post: {
         summary: 'Dry-run Notification Parser (No DB Mutation)',

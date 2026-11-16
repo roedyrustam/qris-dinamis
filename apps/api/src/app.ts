@@ -20,6 +20,15 @@ import { bufferFromBase64, decodeQrisFromBuffer } from './services/qr-decoder.js
 import { allocateUniqueCode, markTransactionPaid } from './services/transaction.js';
 import { retryWebhookById } from './services/webhook.js';
 import { verifierRegistry } from './verifiers/notification-parser.js';
+import {
+  parseDokuPayload,
+  parseMidtransPayload,
+  parseSnapBiPayload,
+  verifyDokuSignature,
+  verifyMidtransSignature,
+  type PgExtractedPayment,
+  type PgProvider,
+} from './verifiers/pg-adapters.js';
 
 async function readImageInput(c: {
   req: {
@@ -658,6 +667,117 @@ export function createApp(db: AppDatabase) {
   // --- Pluggable Payment Notification Ingest ---
   app.get('/v1/ingest/adapters', (c) => {
     return c.json({ adapters: verifierRegistry.listAdapters() });
+  });
+
+  app.post('/v1/ingest/pg/:provider', async (c) => {
+    const provider = c.req.param('provider') as PgProvider;
+    if (provider !== 'doku' && provider !== 'snap-bi' && provider !== 'midtrans') {
+      return c.json({ error: `Unsupported PG provider "${provider}". Use doku, snap-bi, or midtrans.` }, 400);
+    }
+
+    const rawBody = await c.req.text();
+    let body: Record<string, unknown> | null = null;
+    try {
+      body = JSON.parse(rawBody) as Record<string, unknown>;
+    } catch {
+      return c.json({ error: 'Invalid JSON payload' }, 400);
+    }
+
+    if (provider === 'doku' && process.env.DOKU_SECRET_KEY) {
+      const sig = c.req.header('Signature') ?? '';
+      const valid = verifyDokuSignature({
+        secretKey: process.env.DOKU_SECRET_KEY,
+        clientId: c.req.header('Client-Id') ?? '',
+        requestId: c.req.header('Request-Id') ?? '',
+        requestTimestamp: c.req.header('Request-Timestamp') ?? '',
+        requestTarget: new URL(c.req.url).pathname,
+        rawBody,
+        signatureHeader: sig,
+      });
+      if (!valid) return c.json({ error: 'Invalid DOKU signature' }, 401);
+    }
+
+    if (provider === 'midtrans' && process.env.MIDTRANS_SERVER_KEY) {
+      const valid = verifyMidtransSignature({
+        serverKey: process.env.MIDTRANS_SERVER_KEY,
+        orderId: String(body.order_id ?? ''),
+        statusCode: String(body.status_code ?? ''),
+        grossAmount: String(body.gross_amount ?? ''),
+        signatureKey: String(body.signature_key ?? ''),
+      });
+      if (!valid) return c.json({ error: 'Invalid Midtrans signature' }, 401);
+    }
+
+    let extracted: PgExtractedPayment | null = null;
+    if (provider === 'doku') extracted = parseDokuPayload(body);
+    else if (provider === 'snap-bi') extracted = parseSnapBiPayload(body);
+    else extracted = parseMidtransPayload(body);
+
+    if (!extracted) {
+      return c.json({ matched: false, reason: 'Could not parse PG payment payload' }, 400);
+    }
+    if (!extracted.isPaid) {
+      return c.json({ matched: false, reason: 'Notification status is not paid/settled' }, 200);
+    }
+
+    const nowIso = new Date().toISOString();
+    const merchantIdQuery = c.req.query('merchantId');
+
+    // Match by externalId first, otherwise fallback to merchantId + exact totalAmount
+    const [candidate] = extracted.externalId
+      ? await db
+          .select()
+          .from(transactions)
+          .where(
+            and(
+              eq(transactions.externalId, extracted.externalId),
+              eq(transactions.status, 'PENDING'),
+              gt(transactions.expiresAt, nowIso),
+            ),
+          )
+          .limit(1)
+      : merchantIdQuery
+        ? await db
+            .select()
+            .from(transactions)
+            .where(
+              and(
+                eq(transactions.merchantId, merchantIdQuery),
+                eq(transactions.status, 'PENDING'),
+                eq(transactions.totalAmount, extracted.amount),
+                gt(transactions.expiresAt, nowIso),
+              ),
+            )
+            .limit(1)
+        : [];
+
+    if (!candidate) {
+      return c.json({ matched: false, extractedAmount: extracted.amount, externalId: extracted.externalId ?? null }, 200);
+    }
+
+    const { transaction, webhookTriggered } = await markTransactionPaid(db, candidate.id, {
+      paidVia: provider,
+      paidReference: extracted.reference ?? null,
+    });
+
+    await db.insert(ingestEvents).values({
+      id: `ing_${randomUUID().replace(/-/g, '').slice(0, 16)}`,
+      merchantId: candidate.merchantId,
+      source: `pg:${provider}`,
+      rawPayload: rawBody,
+      extractedAmount: extracted.amount,
+      matchedTransactionId: transaction?.id ?? candidate.id,
+      status: transaction ? 'MATCHED' : 'DUPLICATE',
+      createdAt: nowIso,
+    });
+
+    return c.json({
+      matched: Boolean(transaction),
+      provider,
+      extractedAmount: extracted.amount,
+      transaction,
+      webhookTriggered,
+    });
   });
 
   app.post('/v1/ingest/parse-preview', async (c) => {
