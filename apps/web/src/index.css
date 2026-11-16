@@ -1,0 +1,127 @@
+:root {
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --surface-muted: #f4f4f5;
+  --border: #e4e4e7;
+  --text: #09090b;
+  --text-muted: #71717a;
+  --accent: #18181b;
+  --accent-fg: #ffffff;
+  --emerald-bg: #ecfdf5;
+  --emerald-text: #047857;
+  --amber-bg: #fffbeb;
+  --amber-text: #b45309;
+  --rose-bg: #fff1f2;
+  --rose-text: #be123c;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.container {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px 20px 64px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--surface-muted);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #27272a;
+}
+
+.input,
+.textarea,
+.select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.input:focus,
+.textarea:focus,
+.select:focus {
+  outline: 2px solid #18181b;
+  outline-offset: -1px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.badge-paid {
+  background: var(--emerald-bg);
+  color: var(--emerald-text);
+}
+
+.badge-pending {
+  background: var(--amber-bg);
+  color: var(--amber-text);
+}
+
+.badge-failed {
+  background: var(--rose-bg);
+  color: var(--rose-text);
+}

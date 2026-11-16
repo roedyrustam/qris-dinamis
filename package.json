@@ -1,0 +1,20 @@
+{
+  "name": "qris-dinamis-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "QRIS Static-to-Dynamic SDK, REST API & Webhook Engine",
+  "scripts": {
+    "build": "pnpm -r --stream build",
+    "dev": "pnpm --parallel --filter @qris-dinamis/api --filter @qris-dinamis/web dev",
+    "test": "pnpm -r --stream test",
+    "typecheck": "pnpm -r --stream typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.9"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
