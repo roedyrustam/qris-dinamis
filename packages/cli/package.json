@@ -23,6 +23,13 @@
   "bin": {
     "qris-dinamis": "./dist/bin.js"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
