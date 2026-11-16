@@ -135,6 +135,13 @@ export const openApiSpec = {
         responses: { '200': { description: 'Transaction details' } },
       },
     },
+    '/v1/transactions/{id}/events': {
+      get: {
+        summary: 'Subscribe to Real-Time Transaction Status Updates (SSE)',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'text/event-stream emitting status events (PENDING, PAID, EXPIRED)' } },
+      },
+    },
     '/v1/ingest/adapters': {
       get: {
         summary: 'List Registered Bank & E-Wallet Notification Adapters',

@@ -9,11 +9,13 @@ import {
 import { and, desc, eq, gt } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 import type { AppDatabase } from './db/client.js';
 import { ingestEvents, merchants, transactions, webhookLogs } from './db/schema.js';
 import { openApiSpec } from './openapi.js';
 import { apiKeyAuth, rateLimiter } from './middleware/security.js';
+import { transactionEvents } from './services/events.js';
 import { bufferFromBase64, decodeQrisFromBuffer } from './services/qr-decoder.js';
 import { allocateUniqueCode, markTransactionPaid } from './services/transaction.js';
 import { retryWebhookById } from './services/webhook.js';
@@ -429,12 +431,79 @@ export function createApp(db: AppDatabase) {
     const [tx] = await db.select().from(transactions).where(eq(transactions.id, c.req.param('id')));
     if (!tx) return c.json({ error: 'Transaction not found' }, 404);
 
+    const [merchant] = await db.select({ name: merchants.name }).from(merchants).where(eq(merchants.id, tx.merchantId));
     const [qrSvg, qrDataUrl] = await Promise.all([
       renderQrSvg(tx.dynamicQris),
       renderQrDataUrl(tx.dynamicQris),
     ]);
 
-    return c.json({ transaction: { ...tx, qrSvg, qrDataUrl } });
+    return c.json({
+      transaction: {
+        ...tx,
+        merchantName: merchant?.name ?? null,
+        qrSvg,
+        qrDataUrl,
+      },
+    });
+  });
+
+  app.get('/v1/transactions/:id/events', async (c) => {
+    const id = c.req.param('id');
+    const [tx] = await db.select().from(transactions).where(eq(transactions.id, id));
+    if (!tx) return c.json({ error: 'Transaction not found' }, 404);
+
+    return streamSSE(c, async (stream) => {
+      const initialEvent = {
+        transactionId: tx.id,
+        merchantId: tx.merchantId,
+        status: tx.status,
+        totalAmount: tx.totalAmount,
+        paidVia: tx.paidVia,
+        paidReference: tx.paidReference,
+        paidAt: tx.paidAt,
+        expiresAt: tx.expiresAt,
+        updatedAt: tx.updatedAt,
+      };
+      await stream.writeSSE({
+        event: 'status',
+        data: JSON.stringify(initialEvent),
+      });
+
+      if (tx.status === 'PAID' || tx.status === 'EXPIRED') {
+        return;
+      }
+
+      await new Promise<void>((resolve) => {
+        let closed = false;
+        const finish = () => {
+          if (closed) return;
+          closed = true;
+          clearInterval(heartbeat);
+          unsubscribe();
+          resolve();
+        };
+
+        const unsubscribe = transactionEvents.subscribe(id, async (event) => {
+          try {
+            await stream.writeSSE({
+              event: 'status',
+              data: JSON.stringify(event),
+            });
+            if (event.status === 'PAID' || event.status === 'EXPIRED') {
+              finish();
+            }
+          } catch {
+            finish();
+          }
+        });
+
+        const heartbeat = setInterval(() => {
+          stream.writeSSE({ event: 'ping', data: '{}' }).catch(finish);
+        }, 20_000);
+
+        stream.onAbort(finish);
+      });
+    });
   });
 
   // --- Pluggable Payment Notification Ingest ---

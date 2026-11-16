@@ -347,4 +347,52 @@ describe('@qris-dinamis/api integration', () => {
       client.close();
     }
   });
+
+  it('streams real-time PENDING -> PAID status via SSE /v1/transactions/:id/events', async () => {
+    const { db, client } = await createDb('file::memory:');
+    try {
+      const app = createApp(db);
+
+      const mRes = await app.request('/v1/merchants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staticQris: buildStaticQris() }),
+      });
+      const { merchant } = (await mRes.json()) as { merchant: { id: string } };
+
+      const gRes = await app.request('/v1/qris/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ merchantId: merchant.id, amount: 30000, useUniqueCode: true }),
+      });
+      const { transaction } = (await gRes.json()) as { transaction: { id: string } };
+
+      const sseRes = await app.request(`/v1/transactions/${transaction.id}/events`);
+      expect(sseRes.status).toBe(200);
+      expect(sseRes.headers.get('content-type')).toContain('text/event-stream');
+
+      const reader = sseRes.body!.getReader();
+      const decoder = new TextDecoder();
+
+      const firstChunk = await reader.read();
+      const firstText = decoder.decode(firstChunk.value);
+      expect(firstText).toContain('event: status');
+      expect(firstText).toContain('"status":"PENDING"');
+
+      // Trigger payment
+      const payRes = await app.request('/v1/sandbox/simulate-pay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactionId: transaction.id }),
+      });
+      expect(payRes.status).toBe(200);
+
+      const secondChunk = await reader.read();
+      const secondText = decoder.decode(secondChunk.value);
+      expect(secondText).toContain('event: status');
+      expect(secondText).toContain('"status":"PAID"');
+    } finally {
+      client.close();
+    }
+  });
 });

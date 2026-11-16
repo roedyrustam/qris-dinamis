@@ -3,6 +3,7 @@ import {
   Activity,
   CheckCircle2,
   Copy,
+  ExternalLink,
   QrCode,
   RefreshCw,
   Send,
@@ -11,8 +12,9 @@ import {
   Upload,
   Webhook,
 } from 'lucide-react';
+import { CheckoutPage } from './CheckoutPage';
 
-type Tab = 'playground' | 'merchants' | 'transactions' | 'webhooks' | 'privacy' | 'terms' | 'delete-account';
+type Tab = 'playground' | 'merchants' | 'transactions' | 'webhooks' | 'privacy' | 'terms' | 'delete-account' | 'pay';
 
 interface Merchant {
   id: string;
@@ -60,8 +62,13 @@ function formatIdr(amount: number) {
 }
 
 export default function App() {
+  const [payTxId, setPayTxId] = useState<string | null>(() => {
+    const match = window.location.pathname.match(/^\/pay\/([^/]+)$/);
+    return match?.[1] ?? null;
+  });
   const [tab, setTab] = useState<Tab>(() => {
     const path = window.location.pathname.replace(/^\//, '');
+    if (path.startsWith('pay/')) return 'pay';
     if (path === 'privacy' || path === 'terms' || path === 'delete-account') return path;
     return 'playground';
   });
@@ -121,8 +128,15 @@ export default function App() {
 
   function navigate(next: Tab) {
     setTab(next);
+    if (next !== 'pay') setPayTxId(null);
     const url = next === 'privacy' || next === 'terms' || next === 'delete-account' ? `/${next}` : '/';
     window.history.pushState({}, '', url);
+  }
+
+  function openCheckout(txId: string) {
+    setPayTxId(txId);
+    setTab('pay');
+    window.history.pushState({}, '', `/pay/${txId}`);
   }
 
   async function handleConvert() {
@@ -647,15 +661,20 @@ export default function App() {
                         </span>
                       </td>
                       <td style={{ padding: '10px 6px' }}>
-                        {tx.status === 'PENDING' ? (
-                          <button className="btn" onClick={() => handleSimulatePay(tx.id)}>
-                            <CheckCircle2 size={13} /> Simulate Pay
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                          <button className="btn" onClick={() => openCheckout(tx.id)} title="Buka Hosted Checkout /pay/:id">
+                            <ExternalLink size={13} /> Pay Page
                           </button>
-                        ) : (
-                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                            {tx.paidVia ?? 'Selesai'}
-                          </span>
-                        )}
+                          {tx.status === 'PENDING' ? (
+                            <button className="btn" onClick={() => handleSimulatePay(tx.id)}>
+                              <CheckCircle2 size={13} /> Simulate Pay
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                              {tx.paidVia ?? 'Selesai'}
+                            </span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -664,6 +683,16 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {tab === 'pay' && payTxId && (
+        <CheckoutPage
+          transactionId={payTxId}
+          onBack={() => {
+            navigate('transactions');
+            refreshAll();
+          }}
+        />
       )}
 
       {tab === 'webhooks' && (

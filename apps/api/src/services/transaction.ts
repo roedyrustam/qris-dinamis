@@ -1,6 +1,7 @@
 import { and, eq, gt, lt } from 'drizzle-orm';
 import type { AppDatabase } from '../db/client.js';
 import { merchants, transactions, type TransactionRow } from '../db/schema.js';
+import { transactionEvents } from './events.js';
 import { dispatchWebhook } from './webhook.js';
 
 /**
@@ -64,6 +65,18 @@ export async function markTransactionPaid(
     return { transaction: null, webhookTriggered: false };
   }
 
+  transactionEvents.emit({
+    transactionId: updated.id,
+    merchantId: updated.merchantId,
+    status: 'PAID',
+    totalAmount: updated.totalAmount,
+    paidVia: updated.paidVia,
+    paidReference: updated.paidReference,
+    paidAt: updated.paidAt,
+    expiresAt: updated.expiresAt,
+    updatedAt: updated.updatedAt,
+  });
+
   const [merchant] = await db.select().from(merchants).where(eq(merchants.id, updated.merchantId));
   let webhookTriggered = false;
 
@@ -87,6 +100,17 @@ export async function expireStaleTransactions(db: AppDatabase): Promise<number> 
     .returning();
 
   for (const tx of expired) {
+    transactionEvents.emit({
+      transactionId: tx.id,
+      merchantId: tx.merchantId,
+      status: 'EXPIRED',
+      totalAmount: tx.totalAmount,
+      paidVia: tx.paidVia,
+      paidReference: tx.paidReference,
+      paidAt: tx.paidAt,
+      expiresAt: tx.expiresAt,
+      updatedAt: tx.updatedAt,
+    });
     const [merchant] = await db.select().from(merchants).where(eq(merchants.id, tx.merchantId));
     if (merchant?.webhookUrl) {
       await dispatchWebhook(db, tx, merchant, 'payment.expired');
