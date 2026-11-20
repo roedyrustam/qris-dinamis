@@ -84,21 +84,36 @@ export function extractMerchantInfo(tags: TlvTag[]): MerchantInfo {
   let nmid: string | null = null;
   let acquirer: string | null = null;
 
-  // Merchant Account Information resides in tags 26..51
+  // Merchant Account Information resides in tags 26..51 (Tag 51 is National QRIS NMID)
   for (const t of tags) {
     const tagNum = Number.parseInt(t.tag, 10);
     if (tagNum >= 26 && tagNum <= 51) {
       try {
         const subTags = parseTlv(t.value);
         const subMap = new Map(subTags.map((st) => [st.tag, st.value]));
-        if (!acquirer && subMap.has('00')) {
+        if (!acquirer && tagNum < 51 && subMap.has('00')) {
           acquirer = subMap.get('00') ?? null;
         }
-        if (!nmid && subMap.has('02')) {
-          nmid = subMap.get('02') ?? null;
+        const candidateNmid = subMap.get('02');
+        if (candidateNmid) {
+          // Prefer official Tag 51 NMID or ID-prefixed National Merchant ID
+          if (tagNum === 51 || (!nmid && candidateNmid) || (candidateNmid.startsWith('ID') && !nmid?.startsWith('ID'))) {
+            nmid = candidateNmid;
+          }
         }
       } catch {
         // Ignore non-TLV proprietary sub-tags
+      }
+    }
+  }
+
+  if (!acquirer) {
+    const tag51 = byTag.get('51');
+    if (tag51) {
+      try {
+        acquirer = new Map(parseTlv(tag51).map((st) => [st.tag, st.value])).get('00') ?? null;
+      } catch {
+        // Ignore
       }
     }
   }

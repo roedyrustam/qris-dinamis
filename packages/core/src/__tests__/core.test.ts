@@ -191,4 +191,56 @@ describe('@qris-dinamis/core', () => {
     expect(res3.valid).toBe(false);
     expect(res3.errors.length).toBeGreaterThan(0);
   });
+
+  it('enforces EMVCo Tag 54/57 limits, preserves Tag 62 sub-tags, handles whitespace CRC, and prefers Tag 51 NMID', () => {
+    // 1. Trailing newline CRC verification
+    expect(verifyCrc16(`${sampleStatic}\n`)).toBe(true);
+
+    // 2. Tag 57 percentage bounds (0.01..99.99)
+    expect(() =>
+      convertStaticToDynamic(sampleStatic, { amount: 10000, fee: { type: 'percentage', value: 100 } }),
+    ).toThrow(/0\.01 and 99\.99/);
+    expect(() =>
+      convertStaticToDynamic(sampleStatic, { amount: 10000, fee: { type: 'percentage', value: 0.001 } }),
+    ).toThrow(/0\.01 and 99\.99/);
+
+    // 3. Tag 54 max 13 chars
+    expect(() =>
+      convertStaticToDynamic(sampleStatic, { amount: 12345678901234 }),
+    ).toThrow(/max 13 chars/);
+
+    // 4. Tag 62 merge preserves existing sub-tag 07 while inserting 01 & 05, and places Tag 54 right after Tag 53
+    const bodyWithTag51And62 =
+      '000201' +
+      '010211' +
+      '26500015ID.CO.GOPAY.WWW01189360089800012345670205G9999' +
+      '51440014ID.CO.QRIS.WWW0215ID20260000123450303UMI' +
+      '52045499' +
+      '5303360' +
+      '5802ID' +
+      '5914TOKO KOPI KITA' +
+      '6007JAKARTA' +
+      '62070703A01' +
+      '6304';
+    const qrisWith62 = `${bodyWithTag51And62}${computeCrc16(bodyWithTag51And62)}`;
+
+    const converted = convertStaticToDynamic(qrisWith62, {
+      amount: 50000,
+      additionalData: { billNumber: 'INV-88', referenceLabel: 'REF-01' },
+    });
+
+    expect(verifyCrc16(converted.dynamicQris)).toBe(true);
+    expect(converted.merchant.nmid).toBe('ID2026000012345');
+    expect(converted.merchant.acquirer).toBe('ID.CO.GOPAY.WWW');
+
+    const tagOrder = converted.tags.map((t) => t.tag);
+    expect(tagOrder.indexOf('54')).toBe(tagOrder.indexOf('53') + 1);
+
+    const tag62 = converted.tags.find((t) => t.tag === '62');
+    expect(tag62).toBeDefined();
+    const sub62 = new Map(parseTlv(tag62!.value).map((s) => [s.tag, s.value]));
+    expect(sub62.get('07')).toBe('A01');
+    expect(sub62.get('01')).toBe('INV-88');
+    expect(sub62.get('05')).toBe('REF-01');
+  });
 });

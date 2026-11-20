@@ -11,6 +11,7 @@ export {
   convertStaticToDynamic,
   validateQris,
   type FeeOption,
+  type AdditionalDataOptions,
   type ConvertOptions,
   type ConvertResult,
   type ValidationResult,
