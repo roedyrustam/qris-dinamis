@@ -25,6 +25,7 @@ const INIT_STATEMENTS = [
     merchant_id TEXT NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
     external_id TEXT,
     idempotency_key TEXT UNIQUE,
+    mode TEXT NOT NULL DEFAULT 'MPM',
     base_amount INTEGER NOT NULL,
     unique_code INTEGER NOT NULL DEFAULT 0,
     total_amount INTEGER NOT NULL,
@@ -84,6 +85,8 @@ export async function createDb(databaseUrl = process.env.DATABASE_URL ?? 'file:.
   for (const sql of INIT_STATEMENTS) {
     await client.execute(sql);
   }
+  // Safe additive migration for existing SQLite files created before v1.9.0
+  await client.execute(`ALTER TABLE transactions ADD COLUMN mode TEXT NOT NULL DEFAULT 'MPM'`).catch(() => {});
 
   const db = drizzle(client, { schema });
   return { db, client };

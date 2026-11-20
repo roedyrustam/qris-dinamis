@@ -209,4 +209,37 @@ export class QrisDinamisClient {
   getTransactionEventsUrl(transactionId: string): string {
     return `${this.baseUrl}/v1/transactions/${encodeURIComponent(transactionId)}/events`;
   }
+
+  validateCpmQr(qrData: string) {
+    return this.request<{
+      valid: boolean;
+      format: string;
+      wallet: string | null;
+      maskedToken: string | null;
+      aid: string | null;
+      errors: string[];
+    }>('/v1/qris/cpm/validate', {
+      method: 'POST',
+      body: JSON.stringify({ qrData }),
+    });
+  }
+
+  payWithCpm(input: {
+    merchantId: string;
+    amount: number;
+    qrData: string;
+    externalId?: string;
+    idempotencyKey?: string;
+    metadata?: Record<string, unknown>;
+  }) {
+    return this.request<{
+      approved: boolean;
+      wallet: string | null;
+      transaction: TransactionRecord;
+      webhookTriggered: boolean;
+    }>('/v1/qris/cpm/pay', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
 }

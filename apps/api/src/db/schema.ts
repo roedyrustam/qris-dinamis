@@ -23,6 +23,7 @@ export const transactions = sqliteTable(
       .references(() => merchants.id, { onDelete: 'cascade' }),
     externalId: text('external_id'),
     idempotencyKey: text('idempotency_key').unique(),
+    mode: text('mode').notNull().default('MPM'), // MPM | CPM
     baseAmount: integer('base_amount').notNull(),
     uniqueCode: integer('unique_code').notNull().default(0),
     totalAmount: integer('total_amount').notNull(),

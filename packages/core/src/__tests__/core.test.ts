@@ -171,4 +171,24 @@ describe('@qris-dinamis/core', () => {
       'https://api.example.com/v1/transactions/tx_123/events',
     );
   });
+
+  it('validates EMVCo CPM Base64 and numeric QRIS CPM tokens', async () => {
+    const { buildSampleCpmQr, validateCpmQr } = await import('../index.js');
+
+    const emvCpm = buildSampleCpmQr({ wallet: 'DANA', pan: '936008980001234567' });
+    const res1 = validateCpmQr(emvCpm);
+    expect(res1.valid).toBe(true);
+    expect(res1.format).toBe('emvco-cpm-base64');
+    expect(res1.wallet).toBe('DANA');
+    expect(res1.maskedToken).toBe('9360****4567');
+
+    const res2 = validateCpmQr('93600898000123456789');
+    expect(res2.valid).toBe(true);
+    expect(res2.format).toBe('numeric-token');
+    expect(res2.wallet).toBe('QRIS-CPM');
+
+    const res3 = validateCpmQr('invalid-short');
+    expect(res3.valid).toBe(false);
+    expect(res3.errors.length).toBeGreaterThan(0);
+  });
 });

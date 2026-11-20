@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.9.0] - 2026-11-20
+
+### Added
+- **Dual-Mode QRIS Support (MPM + Customer-Presented Mode / CPM)**:
+  - **Core SDK (`@qris-dinamis/core`)**: Added `validateCpmQr` and `buildSampleCpmQr` in `packages/core/src/cpm.ts` supporting EMVCo CPM Base64 BER-TLV (`CPV01`) and 16–32 digit wallet CPM tokens, plus `validateCpmQr` & `payWithCpm` in `QrisDinamisClient`.
+  - **API & Acquirer Engine (`@qris-dinamis/api`)**: Added `mode` (`MPM` | `CPM`) to `transactions`, pluggable `CpmAcquirerAdapter` (`SandboxCpmAcquirer` & `SnapBiCpmAcquirer` via `CPM_ACQUIRER_URL`), and endpoints `POST /v1/qris/cpm/validate` & `POST /v1/qris/cpm/pay` with idempotency, SSE, and signed webhook delivery.
+  - **Web Dashboard (`@qris-dinamis/web`)**: Added **CPM POS** terminal (`CpmTerminal.tsx`) and `MPM`/`CPM` badges in the transaction monitor.
+
 ## [1.8.0] - 2026-11-16
 
 ### Added

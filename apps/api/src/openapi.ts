@@ -128,6 +128,18 @@ export const openApiSpec = {
         responses: { '200': { description: 'Converted dynamic QRIS string & QR SVG' } },
       },
     },
+    '/v1/qris/cpm/validate': {
+      post: {
+        summary: 'Validate Customer-Presented Mode (CPM) QR Payload',
+        responses: { '200': { description: 'Validation result (format, wallet, maskedToken)' } },
+      },
+    },
+    '/v1/qris/cpm/pay': {
+      post: {
+        summary: 'Process Customer-Presented Mode (CPM) QRIS Payment as Acquirer',
+        responses: { '200': { description: 'CPM authorization result (PAID or FAILED) + webhook status' } },
+      },
+    },
     '/v1/qris/generate': {
       post: {
         summary: 'Create Dynamic QRIS Transaction',

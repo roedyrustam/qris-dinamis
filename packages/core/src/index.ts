@@ -23,6 +23,12 @@ export {
   type VerifyWebhookInput,
 } from './webhook.js';
 export {
+  validateCpmQr,
+  buildSampleCpmQr,
+  type CpmQrFormat,
+  type CpmValidationResult,
+} from './cpm.js';
+export {
   QrisDinamisClient,
   type QrisClientConfig,
   type CreateMerchantInput,

@@ -13,9 +13,10 @@ import {
   Webhook,
 } from 'lucide-react';
 import { CheckoutPage } from './CheckoutPage';
+import { CpmTerminal } from './CpmTerminal';
 import { IngestInspector } from './IngestInspector';
 
-type Tab = 'playground' | 'merchants' | 'transactions' | 'webhooks' | 'ingest' | 'privacy' | 'terms' | 'delete-account' | 'pay';
+type Tab = 'playground' | 'cpm' | 'merchants' | 'transactions' | 'webhooks' | 'ingest' | 'privacy' | 'terms' | 'delete-account' | 'pay';
 
 interface Merchant {
   id: string;
@@ -32,6 +33,7 @@ interface Transaction {
   id: string;
   merchantId: string;
   externalId: string | null;
+  mode?: 'MPM' | 'CPM';
   baseAmount: number;
   uniqueCode: number;
   totalAmount: number;
@@ -278,7 +280,13 @@ export default function App() {
             className={`btn ${tab === 'playground' ? 'btn-primary' : ''}`}
             onClick={() => navigate('playground')}
           >
-            <QrCode size={14} /> Playground
+            <QrCode size={14} /> MPM Playground
+          </button>
+          <button
+            className={`btn ${tab === 'cpm' ? 'btn-primary' : ''}`}
+            onClick={() => navigate('cpm')}
+          >
+            <Upload size={14} /> CPM POS
           </button>
           <button
             className={`btn ${tab === 'merchants' ? 'btn-primary' : ''}`}
@@ -682,7 +690,12 @@ export default function App() {
                   {transactions.map((tx) => (
                     <tr key={tx.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '10px 6px' }}>
-                        <div className="mono" style={{ fontSize: 12 }}>{tx.id}</div>
+                        <div className="mono" style={{ fontSize: 12 }}>
+                          {tx.id}{' '}
+                          <span style={{ fontSize: 10, padding: '1px 5px', border: '1px solid var(--border)', borderRadius: 4 }}>
+                            {tx.mode ?? 'MPM'}
+                          </span>
+                        </div>
                         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{tx.externalId ?? '-'}</div>
                       </td>
                       <td style={{ padding: '10px 6px' }} className="tabular-nums">
@@ -740,6 +753,8 @@ export default function App() {
           }}
         />
       )}
+
+      {tab === 'cpm' && <CpmTerminal merchants={merchants} onTransactionCreated={refreshAll} />}
 
       {tab === 'ingest' && <IngestInspector />}
 

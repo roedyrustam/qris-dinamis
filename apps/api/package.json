@@ -1,6 +1,6 @@
 {
   "name": "@qris-dinamis/api",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "Hono REST API, Pluggable Payment Verifier, and HMAC Webhook Engine for QRIS Dinamis",
   "type": "module",
   "scripts": {

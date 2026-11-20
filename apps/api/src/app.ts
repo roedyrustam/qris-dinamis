@@ -3,6 +3,7 @@ import {
   convertStaticToDynamic,
   renderQrDataUrl,
   renderQrSvg,
+  validateCpmQr,
   validateQris,
   type FeeOption,
 } from '@qris-dinamis/core';
@@ -19,6 +20,7 @@ import { transactionEvents } from './services/events.js';
 import { bufferFromBase64, decodeQrisFromBuffer } from './services/qr-decoder.js';
 import { allocateUniqueCode, markTransactionPaid } from './services/transaction.js';
 import { retryWebhookById } from './services/webhook.js';
+import { resolveCpmAcquirer } from './verifiers/cpm-acquirer.js';
 import { verifierRegistry } from './verifiers/notification-parser.js';
 import {
   parseDokuPayload,
@@ -108,6 +110,19 @@ const parsePreviewSchema = ingestNotificationSchema.omit({ merchantId: true });
 
 const simulatePaySchema = z.object({
   transactionId: z.string().min(1),
+});
+
+const cpmValidateSchema = z.object({
+  qrData: z.string().min(1),
+});
+
+const cpmPaySchema = z.object({
+  merchantId: z.string().min(1),
+  amount: z.number().int().positive(),
+  qrData: z.string().min(1),
+  externalId: z.string().max(120).optional(),
+  idempotencyKey: z.string().max(120).optional(),
+  metadata: z.record(z.unknown()).optional(),
 });
 
 const rotateKeysSchema = z
@@ -419,6 +434,117 @@ export function createApp(db: AppDatabase) {
     } catch (err) {
       return c.json({ error: err instanceof Error ? err.message : 'Conversion failed' }, 400);
     }
+  });
+
+  // --- Customer-Presented Mode (CPM) Validation & Acquirer Payment ---
+  app.post('/v1/qris/cpm/validate', async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = cpmValidateSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: parsed.error.issues[0]?.message ?? 'Invalid request body' }, 400);
+    }
+    const result = validateCpmQr(parsed.data.qrData);
+    return c.json(result);
+  });
+
+  app.post('/v1/qris/cpm/pay', requireApiKey, async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = cpmPaySchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: parsed.error.issues[0]?.message ?? 'Invalid request body' }, 400);
+    }
+
+    const input = parsed.data;
+    if (input.idempotencyKey) {
+      const [existing] = await db
+        .select()
+        .from(transactions)
+        .where(eq(transactions.idempotencyKey, input.idempotencyKey));
+      if (existing) {
+        return c.json({
+          approved: existing.status === 'PAID',
+          wallet: null,
+          transaction: existing,
+          webhookTriggered: false,
+          idempotentReplay: true,
+        });
+      }
+    }
+
+    const [merchant] = await db.select().from(merchants).where(eq(merchants.id, input.merchantId));
+    if (!merchant || merchant.isActive !== 1) {
+      return c.json({ error: 'Active merchant not found' }, 404);
+    }
+
+    const validation = validateCpmQr(input.qrData);
+    if (!validation.valid) {
+      return c.json({ error: validation.errors.join('; ') }, 400);
+    }
+
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const expiresAt = new Date(now.getTime() + 300_000).toISOString();
+    const txId = `tx_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
+
+    const [created] = await db
+      .insert(transactions)
+      .values({
+        id: txId,
+        merchantId: merchant.id,
+        externalId: input.externalId ?? null,
+        idempotencyKey: input.idempotencyKey ?? null,
+        mode: 'CPM',
+        baseAmount: input.amount,
+        uniqueCode: 0,
+        totalAmount: input.amount,
+        feeType: 'none',
+        feeValue: null,
+        dynamicQris: `CPM:${validation.format}:${validation.maskedToken ?? '****'}`,
+        status: 'PENDING',
+        metadataJson: input.metadata ? JSON.stringify(input.metadata) : null,
+        expiresAt,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      })
+      .returning();
+
+    const acquirer = resolveCpmAcquirer();
+    const authResult = await acquirer.authorizeAndPay({
+      transactionId: created.id,
+      merchantId: merchant.id,
+      nmid: merchant.nmid,
+      amount: input.amount,
+      qrData: input.qrData,
+      validation,
+      externalId: input.externalId,
+    });
+
+    if (authResult.approved) {
+      const { transaction, webhookTriggered } = await markTransactionPaid(db, created.id, {
+        paidVia: authResult.acquirer,
+        paidReference: authResult.reference,
+      });
+      return c.json({
+        approved: true,
+        wallet: validation.wallet,
+        transaction: transaction ?? created,
+        webhookTriggered,
+      });
+    }
+
+    const [failedTx] = await db
+      .update(transactions)
+      .set({ status: 'FAILED', paidVia: authResult.acquirer, updatedAt: new Date().toISOString() })
+      .where(eq(transactions.id, created.id))
+      .returning();
+
+    return c.json({
+      approved: false,
+      wallet: validation.wallet,
+      reason: authResult.failureReason ?? 'CPM payment declined',
+      transaction: failedTx ?? created,
+      webhookTriggered: false,
+    });
   });
 
   // --- Stateful Dynamic QRIS Generation ---
