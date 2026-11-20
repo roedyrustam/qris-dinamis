@@ -32,4 +32,8 @@ qris-dinamis webhook test --url http://localhost:3001/webhook --secret whsec_123
 
 # Uji parser notifikasi bank/e-wallet (--preview tidak mengubah DB)
 qris-dinamis ingest --url http://localhost:3001 --source bca --text "QRIS BCA Rp 50.123 BERHASIL" --preview
+
+# Buat & validasi sample QR Customer-Presented Mode (CPM)
+qris-dinamis cpm sample --wallet DANA
+qris-dinamis cpm validate "<CPM_QR_DATA>"
 ```

@@ -1,10 +1,12 @@
 # Product Requirements Document (PRD) — QRIS Dinamis SDK & Webhook Engine
 
 ## 1. Ringkasan Produk
-**QRIS Dinamis** adalah monorepo TypeScript/Node.js yang menyediakan:
-1. **`@qris-dinamis/core`**: Package NPM ringan untuk parsing, validasi, dan konversi string **QRIS Statis** (EMVCo Merchant-Presented Mode) menjadi **QRIS Dinamis** lengkap dengan nominal (`Tag 54`), biaya/tip (`Tag 55-57`), kalkulasi ulang `CRC-16/CCITT-FALSE` (`Tag 63`), renderer QR (SVG, PNG DataURL, Terminal ASCII), helper verifikasi HMAC webhook, dan typed HTTP Client SDK.
-2. **`@qris-dinamis/api`**: Server REST API & Webhook Engine berbasis **Hono** + **Drizzle ORM** (SQLite zero-config / PostgreSQL) dengan arsitektur **Pluggable Payment Verifier**, manajemen transaksi idempoten, kode unik anti-kolisi, expiry TTL, serta pengiriman webhook bertanda tangan **HMAC-SHA256** dengan exponential backoff retry.
-3. **`@qris-dinamis/web`**: Dashboard interaktif untuk *Playground* konversi QRIS, manajemen profil merchant, monitor transaksi & simulasi sandbox, serta *Webhook Delivery Inspector*.
+**QRIS Dinamis (`v2.0.0`)** adalah monorepo TypeScript/Node.js yang menyediakan:
+1. **`@qris-dinamis/core`**: Package NPM untuk parsing, validasi, dan konversi **QRIS MPM** (EMVCo Static → Dynamic: `Tag 01`, `Tag 54`, `Tags 55–57`, `Tag 63`), validasi **QRIS CPM** (`validateCpmQr`, `buildSampleCpmQr`), renderer QR (SVG, PNG DataURL, Terminal ASCII), helper verifikasi HMAC-SHA256 webhook, dan typed `QrisDinamisClient`.
+2. **`@qris-dinamis/cli`**: CLI `qris-dinamis` untuk konversi, validasi, inspeksi MPM/CPM, dan pengujian webhook & parser notifikasi di terminal.
+3. **`@qris-dinamis/react`**: Komponen drop-in `<QrisCheckout />` dan hook `useQrisStatus` berbasis real-time SSE.
+4. **`@qris-dinamis/api`**: Server REST API & Webhook Engine berbasis **Hono** + **Drizzle ORM** mendukung **Dual-Mode QRIS (MPM & CPM Acquirer)**, 13 adapter notifikasi bank/e-wallet Indonesia, adapter PG resmi (`DOKU`, `SNAP BI`, `Midtrans`), isolasi API key multi-tenant, real-time SSE (`InMemory` / `Redis Pub/Sub`), serta retry webhook HMAC-SHA256.
+5. **`@qris-dinamis/web`**: Dashboard interaktif dengan *MPM Playground*, *CPM POS Scanner*, manajemen merchant & rotasi key, monitor transaksi & export CSV/JSON, *Hosted Checkout (`/pay/:id`)*, *Ingest Tester*, *Webhook Inspector*, serta rute legal (`/privacy`, `/terms`, `/delete-account`).
 
 ---
 

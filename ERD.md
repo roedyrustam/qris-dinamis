@@ -16,7 +16,7 @@ erDiagram
         text city
         text webhook_url
         text webhook_secret
-        text api_key_hash
+        text api_key UK
         integer is_active
         text created_at
         text updated_at
@@ -27,6 +27,7 @@ erDiagram
         text merchant_id FK
         text external_id
         text idempotency_key UK
+        text mode
         integer base_amount
         integer unique_code
         integer total_amount
@@ -97,6 +98,7 @@ CREATE TABLE transactions (
   merchant_id TEXT NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
   external_id TEXT,
   idempotency_key TEXT UNIQUE,
+  mode TEXT NOT NULL DEFAULT 'MPM', -- MPM | CPM
   base_amount INTEGER NOT NULL,
   unique_code INTEGER NOT NULL DEFAULT 0,
   total_amount INTEGER NOT NULL,

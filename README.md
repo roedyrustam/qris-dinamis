@@ -4,6 +4,7 @@
 [![Release](https://github.com/roedyrustam/qris-dinamis/actions/workflows/release.yml/badge.svg)](https://github.com/roedyrustam/qris-dinamis/actions/workflows/release.yml)
 [![npm core](https://img.shields.io/npm/v/@qris-dinamis/core?label=%40qris-dinamis%2Fcore)](https://www.npmjs.com/package/@qris-dinamis/core)
 [![npm cli](https://img.shields.io/npm/v/@qris-dinamis/cli?label=%40qris-dinamis%2Fcli)](https://www.npmjs.com/package/@qris-dinamis/cli)
+[![npm react](https://img.shields.io/npm/v/@qris-dinamis/react?label=%40qris-dinamis%2Freact)](https://www.npmjs.com/package/@qris-dinamis/react)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20-339933.svg)](https://nodejs.org/)
@@ -69,6 +70,21 @@ npm install -g @qris-dinamis/cli
 
 # Or run directly without installing
 npx @qris-dinamis/cli convert "<STATIC_QRIS>" --amount 50000 --format terminal
+npx @qris-dinamis/cli cpm sample --wallet DANA
+```
+
+### 3. Drop-in React Checkout (`@qris-dinamis/react`)
+
+```bash
+npm install @qris-dinamis/react @qris-dinamis/core
+```
+
+```tsx
+import { QrisCheckout } from '@qris-dinamis/react';
+
+export function PayPage({ txId }: { txId: string }) {
+  return <QrisCheckout baseUrl="http://localhost:3001" transactionId={txId} />;
+}
 ```
 
 ---
@@ -134,17 +150,18 @@ pnpm --filter @qris-dinamis/cli exec qris-dinamis webhook test --url http://loca
 
 `POST /v1/ingest/notification` and `POST /v1/ingest/parse-preview` support dedicated parsers for Indonesian banks & e-wallets (plus automatic detection from notification text when `source` is `android-notif` or `auto`):
 
-- **Banks:** `bca` (`mybca`, `bca-mobile`, `klikbca`), `bri` (`brimo`, `brilink`), `mandiri` (`livin`, `livin-merchant`, `kopra`), `bni` (`wondr`, `bni-mobile`)
+- **Banks:** `bca` (`mybca`, `bca-mobile`, `klikbca`), `bri` (`brimo`, `brilink`), `mandiri` (`livin`, `livin-merchant`, `kopra`), `bni` (`wondr`, `bni-mobile`), `bsi` (`byond`, `bsi-mobile`), `jago`, `seabank`, `jenius`, `cimb` (`octo`, `octo-mobile`)
 - **E-Wallets:** `gopay` (`gobiz`, `gopay-merchant`), `ovo` (`ovo-merchant`, `grab-merchant`), `dana` (`dana-bisnis`, `dana-merchant`), `shopeepay` (`shopee-partner`, `spay`)
-- **Discovery & Dry-Run:** Use `GET /v1/ingest/adapters` to list registered adapters and `POST /v1/ingest/parse-preview` to test notification extraction without mutating transactions.
+- **Discovery & Dry-Run:** Use `GET /v1/ingest/adapters` to list registered adapters, `GET /v1/ingest/events` to inspect recent ingest logs, and `POST /v1/ingest/parse-preview` to test notification extraction without mutating transactions.
 - **Android Companion:** See [examples/android-listener/README.md](./examples/android-listener/README.md) for Kotlin `NotificationListenerService` and Termux bridge examples.
 
 ---
 
-## Real-Time SSE, Hosted Checkout & Official PG Adapters
+## Dual-Mode QRIS (MPM & CPM), Real-Time SSE & Official PG Adapters
 
-- **Live Payment Status (SSE):** Subscribe to `GET /v1/transactions/:id/events` (`text/event-stream`) for instant `PENDING` → `PAID` / `EXPIRED` updates without polling. Backed by a pluggable `EventBusTransport` in `apps/api/src/services/events.ts`.
-- **Hosted Checkout (`/pay/:id`):** Shareable payment page in `@qris-dinamis/web` with live countdown timer, unique code breakdown, QR PNG download, and real-time SSE confirmation.
+- **Merchant Presented Mode (MPM):** Generate dynamic QRIS codes (`POST /v1/qris/generate`) and display them via Hosted Checkout (`/pay/:id`) or `<QrisCheckout />`.
+- **Customer Presented Mode (CPM):** Validate (`POST /v1/qris/cpm/validate`) and charge (`POST /v1/qris/cpm/pay`) customer-presented QR codes (EMVCo CPM Base64 BER-TLV / wallet tokens) as acquirer via `SandboxCpmAcquirer` or `SnapBiCpmAcquirer` (`CPM_ACQUIRER_URL`).
+- **Live Payment Status (SSE):** Subscribe to `GET /v1/transactions/:id/events` (`text/event-stream`) for instant `PENDING` → `PAID` / `EXPIRED` updates without polling. Backed by a pluggable `EventBusTransport` (`InMemoryEventTransport` or `RedisEventTransport` via `REDIS_URL`).
 - **Analytics, Export & Key Rotation:** `GET /v1/merchants/:id/stats`, `GET /v1/qris/export?format=csv|json`, and `POST /v1/merchants/:id/rotate-keys`.
 - **Official PG Webhooks:** `POST /v1/ingest/pg/:provider` supports **DOKU Checkout** (HMAC-SHA256), **SNAP BI QRIS MPM Notify**, and **Midtrans** (SHA-512).
 
@@ -185,6 +202,11 @@ Configure via `.env` or container environment variables:
 | `WEBHOOK_TIMEOUT_MS` | `8000` | HTTP request timeout in milliseconds when delivering webhooks to merchant endpoints. |
 | `DEFAULT_TX_TTL_SECONDS` | `900` | Default transaction expiration window in seconds (15 minutes). |
 | `CORS_ORIGIN` | `http://localhost:5173` | Allowed CORS origin for browser requests to the API. |
+| `REDIS_URL` | *(unset)* | Optional Redis Pub/Sub URL (`redis://` or `rediss://`) for multi-instance SSE fan-out. |
+| `DOKU_SECRET_KEY` | *(unset)* | Optional DOKU Checkout secret key for HMAC-SHA256 webhook verification on `/v1/ingest/pg/doku`. |
+| `MIDTRANS_SERVER_KEY` | *(unset)* | Optional Midtrans server key for SHA-512 verification on `/v1/ingest/pg/midtrans`. |
+| `CPM_ACQUIRER_URL` | *(unset)* | Optional SNAP BI / DANA QRIS CPM acquirer endpoint URL (defaults to `SandboxCpmAcquirer`). |
+| `CPM_ACQUIRER_TOKEN` | *(unset)* | Optional Bearer token sent to `CPM_ACQUIRER_URL`. |
 
 ---
 

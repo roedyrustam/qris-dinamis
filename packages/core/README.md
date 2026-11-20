@@ -113,8 +113,32 @@ const { transaction } = await client.generateQris({
 console.log(transaction.totalAmount); // e.g. 50001..50999
 console.log(transaction.qrDataUrl);   // Ready-to-display PNG DataURL
 
-// 3. Check transaction status or simulate payment in sandbox
+// 3. Check transaction status, stats, or simulate payment in sandbox
 const status = await client.getTransaction(transaction.id);
 const paid = await client.simulatePayment(transaction.id);
 console.log(paid.transaction.status); // 'PAID'
+
+const stats = await client.getMerchantStats(String(merchant.id));
+console.log(stats.conversionRate);
+```
+
+### 5. Customer-Presented Mode (`validateCpmQr`, `buildSampleCpmQr`, `payWithCpm`)
+
+Validate customer-presented QR codes (EMVCo CPM Base64 BER-TLV or 16–32 digit wallet tokens) and process CPM payments through `@qris-dinamis/api`:
+
+```ts
+import { buildSampleCpmQr, QrisDinamisClient, validateCpmQr } from '@qris-dinamis/core';
+
+const scannedQr = buildSampleCpmQr({ wallet: 'DANA' });
+const check = validateCpmQr(scannedQr);
+console.log(check.valid, check.wallet); // true, 'DANA'
+
+const client = new QrisDinamisClient({ baseUrl: 'http://localhost:3001', apiKey: process.env.QRIS_API_KEY });
+const result = await client.payWithCpm({
+  merchantId: 'merch_xxx',
+  amount: 45000,
+  qrData: scannedQr,
+  idempotencyKey: 'idem-cpm-1',
+});
+console.log(result.approved, result.transaction.status); // true, 'PAID'
 ```
