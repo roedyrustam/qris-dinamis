@@ -15,7 +15,7 @@ import { z } from 'zod';
 import type { AppDatabase } from './db/client.js';
 import { ingestEvents, merchants, transactions, webhookLogs } from './db/schema.js';
 import { openApiSpec } from './openapi.js';
-import { apiKeyAuth, rateLimiter } from './middleware/security.js';
+import { apiKeyAuth, getAuthMerchantId, rateLimiter } from './middleware/security.js';
 import { transactionEvents } from './services/events.js';
 import { bufferFromBase64, decodeQrisFromBuffer } from './services/qr-decoder.js';
 import { allocateUniqueCode, markTransactionPaid } from './services/transaction.js';
@@ -257,6 +257,10 @@ export function createApp(db: AppDatabase) {
 
   app.get('/v1/merchants/:id/stats', requireApiKey, async (c) => {
     const id = c.req.param('id');
+    const authMerchantId = getAuthMerchantId(c);
+    if (authMerchantId && authMerchantId !== id) {
+      return c.json({ error: 'Forbidden: API key does not belong to this merchant' }, 403);
+    }
     const [merchant] = await db.select({ id: merchants.id }).from(merchants).where(eq(merchants.id, id));
     if (!merchant) return c.json({ error: 'Merchant not found' }, 404);
 
@@ -300,6 +304,10 @@ export function createApp(db: AppDatabase) {
 
   app.post('/v1/merchants/:id/rotate-keys', requireApiKey, async (c) => {
     const id = c.req.param('id');
+    const authMerchantId = getAuthMerchantId(c);
+    if (authMerchantId && authMerchantId !== id) {
+      return c.json({ error: 'Forbidden: API key does not belong to this merchant' }, 403);
+    }
     const body = await c.req.json().catch(() => ({}));
     const parsed = rotateKeysSchema.safeParse(body);
     if (!parsed.success) {
@@ -455,6 +463,10 @@ export function createApp(db: AppDatabase) {
     }
 
     const input = parsed.data;
+    const authMerchantId = getAuthMerchantId(c);
+    if (authMerchantId && authMerchantId !== input.merchantId) {
+      return c.json({ error: 'Forbidden: API key does not belong to this merchant' }, 403);
+    }
     if (input.idempotencyKey) {
       const [existing] = await db
         .select()

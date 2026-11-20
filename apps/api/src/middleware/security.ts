@@ -111,6 +111,12 @@ export function apiKeyAuth(db: AppDatabase): MiddlewareHandler {
       return c.json({ error: 'Unauthorized: invalid API key' }, 401);
     }
 
+    c.set('authMerchantId', merchant.id);
     await next();
   };
+}
+
+export function getAuthMerchantId(c: { get: (key: string) => unknown }): string | null {
+  const val = c.get('authMerchantId');
+  return typeof val === 'string' && val.length > 0 ? val : null;
 }

@@ -469,4 +469,43 @@ describe('@qris-dinamis/api integration', () => {
       client.close();
     }
   });
+
+  it('enforces cross-tenant 403 Forbidden isolation when REQUIRE_API_KEY=true', async () => {
+    const prevRequireApiKey = process.env.REQUIRE_API_KEY;
+    process.env.REQUIRE_API_KEY = 'true';
+    const { db, client } = await createDb('file::memory:');
+    try {
+      const app = createApp(db);
+
+      const m1Res = await app.request('/v1/merchants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staticQris: buildStaticQris(), name: 'Merchant A' }),
+      });
+      const m1 = ((await m1Res.json()) as { merchant: { id: string; apiKey: string } }).merchant;
+
+      const m2Res = await app.request('/v1/merchants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staticQris: buildStaticQris(), name: 'Merchant B' }),
+      });
+      const m2 = ((await m2Res.json()) as { merchant: { id: string; apiKey: string } }).merchant;
+
+      // Merchant A cannot read Merchant B stats
+      const crossStats = await app.request(`/v1/merchants/${m2.id}/stats`, {
+        headers: { 'X-Api-Key': m1.apiKey },
+      });
+      expect(crossStats.status).toBe(403);
+
+      // Merchant A can read its own stats
+      const ownStats = await app.request(`/v1/merchants/${m1.id}/stats`, {
+        headers: { 'X-Api-Key': m1.apiKey },
+      });
+      expect(ownStats.status).toBe(200);
+    } finally {
+      if (prevRequireApiKey === undefined) delete process.env.REQUIRE_API_KEY;
+      else process.env.REQUIRE_API_KEY = prevRequireApiKey;
+      client.close();
+    }
+  });
 });

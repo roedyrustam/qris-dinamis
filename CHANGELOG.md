@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0] - 2026-11-20
+
+### Added & Hardened
+- **Multi-Tenant API Key Isolation (`@qris-dinamis/api`)**: Bound `authMerchantId` in `apiKeyAuth` middleware and enforced `403 Forbidden` cross-tenant checks on merchant-scoped endpoints (`/v1/merchants/:id/stats`, `/v1/merchants/:id/rotate-keys`, `/v1/qris/generate`, `/v1/qris/cpm/pay`).
+- **CLI CPM Parity (`@qris-dinamis/cli`)**: Added `qris-dinamis cpm sample` and `qris-dinamis cpm validate <qrData>`.
+- **React Package Test Coverage (`@qris-dinamis/react`)**: Added Vitest suite verifying `@qris-dinamis/react` exports alongside full workspace build/pack verification.
+- **Documentation & Release Alignment**: Updated `README.md` and `.env.example` (`CPM_ACQUIRER_URL`, `CPM_ACQUIRER_TOKEN`) and aligned all 6 workspace packages to `2.0.0`.
+
 ## [1.9.0] - 2026-11-20
 
 ### Added

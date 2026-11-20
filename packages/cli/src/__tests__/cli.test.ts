@@ -115,4 +115,17 @@ describe('@qris-dinamis/cli', () => {
     expect(capturedUrl).toBe('http://localhost:3001/v1/ingest/parse-preview');
     expect(ingestRun.out[0]).toBe('HTTP 200 OK');
   });
+
+  it('generates and validates CPM QR payloads via CLI cpm subcommand', async () => {
+    const sampleRun = createBufferIo();
+    const sCode = await runCli(['cpm', 'sample', '--wallet', 'DANA'], sampleRun.io);
+    expect(sCode).toBe(0);
+    const sampleQr = sampleRun.out[0]!;
+
+    const valRun = createBufferIo();
+    const vCode = await runCli(['cpm', 'validate', sampleQr], valRun.io);
+    expect(vCode).toBe(0);
+    expect(valRun.out[0]).toContain('"valid": true');
+    expect(valRun.out[0]).toContain('"wallet": "DANA"');
+  });
 });

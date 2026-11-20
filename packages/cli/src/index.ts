@@ -2,10 +2,12 @@ import { randomUUID } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import {
+  buildSampleCpmQr,
   convertStaticToDynamic,
   renderQrSvg,
   renderQrTerminal,
   signWebhookPayload,
+  validateCpmQr,
   validateQris,
   verifyWebhookSignature,
   type FeeOption,
@@ -23,12 +25,13 @@ const DEFAULT_IO: CliIo = {
   fetchFn: fetch,
 };
 
-const HELP_TEXT = `qris-dinamis CLI v1.8.0
+const HELP_TEXT = `qris-dinamis CLI v2.0.0
 
 Usage:
   qris-dinamis convert <staticQris> --amount <idr> [options]
   qris-dinamis validate <qris> [--json]
   qris-dinamis inspect <qris> [--json]
+  qris-dinamis cpm <validate <qrData> | sample [--wallet DANA]>
   qris-dinamis webhook <sign|verify|test> [options]
   qris-dinamis ingest --url <apiUrl> --source <src> --text <notif> [--merchant <id>] [--api-key <key>] [--preview]
 
@@ -321,7 +324,7 @@ export async function runCli(argv: string[], io: CliIo = DEFAULT_IO): Promise<nu
     return 0;
   }
   if (command === '--version' || command === '-v') {
-    io.stdout('1.8.0');
+    io.stdout('2.0.0');
     return 0;
   }
 
@@ -333,6 +336,29 @@ export async function runCli(argv: string[], io: CliIo = DEFAULT_IO): Promise<nu
         return handleValidateOrInspect(argv.slice(1), false, io);
       case 'inspect':
         return handleValidateOrInspect(argv.slice(1), true, io);
+      case 'cpm': {
+        const sub = argv[1];
+        if (sub === 'sample') {
+          const { values } = parseArgs({
+            args: argv.slice(2),
+            options: { wallet: { type: 'string', default: 'DANA' } },
+          });
+          io.stdout(buildSampleCpmQr({ wallet: values.wallet }));
+          return 0;
+        }
+        if (sub === 'validate') {
+          const qrData = argv[2];
+          if (!qrData) {
+            io.stderr('Error: missing <qrData> argument for cpm validate');
+            return 1;
+          }
+          const res = validateCpmQr(qrData);
+          io.stdout(JSON.stringify(res, null, 2));
+          return res.valid ? 0 : 1;
+        }
+        io.stderr(`Error: unknown cpm subcommand "${sub ?? ''}". Use validate or sample.`);
+        return 1;
+      }
       case 'webhook':
         return await handleWebhook(argv.slice(1), io);
       case 'ingest':

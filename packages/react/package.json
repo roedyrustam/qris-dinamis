@@ -1,6 +1,6 @@
 {
   "name": "@qris-dinamis/react",
-  "version": "1.9.0",
+  "version": "2.0.0",
   "description": "Drop-in React checkout component and real-time SSE status hook for QRIS Dinamis",
   "license": "MIT",
   "repository": {
@@ -36,6 +36,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "peerDependencies": {
