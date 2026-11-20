@@ -194,6 +194,7 @@ export function CheckoutPage({
             )}
 
             <div
+              className="qr-box"
               style={{
                 background: '#ffffff',
                 padding: 16,
@@ -202,8 +203,13 @@ export function CheckoutPage({
                 justifyContent: 'center',
                 marginBottom: 16,
               }}
-              dangerouslySetInnerHTML={{ __html: tx.qrSvg }}
-            />
+            >
+              <img
+                src={tx.qrDataUrl}
+                alt="QRIS Pembayaran"
+                style={{ width: 240, height: 240, maxWidth: '100%', display: 'block', objectFit: 'contain' }}
+              />
+            </div>
 
             <div
               style={{

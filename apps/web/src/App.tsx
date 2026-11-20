@@ -64,6 +64,25 @@ function formatIdr(amount: number) {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount);
 }
 
+const TLV_TAG_LABELS: Record<string, string> = {
+  '00': 'Payload Format Indicator',
+  '01': 'Point of Initiation (12 = Dynamic)',
+  '26': 'Merchant Account Info (Acquirer)',
+  '51': 'National QRIS (NMID)',
+  '52': 'Merchant Category Code (MCC)',
+  '53': 'Transaction Currency (360 = IDR)',
+  '54': 'Transaction Amount',
+  '55': 'Tip / Convenience Indicator',
+  '56': 'Fixed Convenience Fee',
+  '57': 'Percentage Convenience Fee',
+  '58': 'Country Code',
+  '59': 'Merchant Name',
+  '60': 'Merchant City',
+  '61': 'Postal Code',
+  '62': 'Additional Data Field',
+  '63': 'CRC-16 Checksum',
+};
+
 export default function App() {
   const [payTxId, setPayTxId] = useState<string | null>(() => {
     const match = window.location.pathname.match(/^\/pay\/([^/]+)$/);
@@ -95,6 +114,7 @@ export default function App() {
     tags: Array<{ tag: string; length: number; value: string }>;
   } | null>(null);
   const [pgLoading, setPgLoading] = useState(false);
+  const [pgCopied, setPgCopied] = useState(false);
 
   // Merchant form
   const [mName, setMName] = useState('');
@@ -431,16 +451,23 @@ export default function App() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
                   <div
+                    className="qr-box"
                     style={{
-                      width: 160,
-                      height: 160,
+                      width: 220,
+                      height: 220,
+                      padding: 8,
                       border: '1px solid var(--border)',
                       borderRadius: 8,
-                      overflow: 'hidden',
                       background: '#fff',
+                      flexShrink: 0,
                     }}
-                    dangerouslySetInnerHTML={{ __html: pgResult.qrSvg }}
-                  />
+                  >
+                    <img
+                      src={pgResult.qrDataUrl}
+                      alt="QRIS Dinamis"
+                      style={{ width: '100%', height: '100%', display: 'block', objectFit: 'contain' }}
+                    />
+                  </div>
                   <div style={{ fontSize: 13, display: 'flex', flexDirection: 'column', gap: 4 }}>
                     <div>
                       <strong>Merchant:</strong> {pgResult.merchant.name ?? '-'}
@@ -454,14 +481,23 @@ export default function App() {
                     <div>
                       <strong>CRC-16:</strong> <span className="mono">{pgResult.crc}</span>
                     </div>
-                    <div style={{ marginTop: 6, display: 'flex', gap: 8 }}>
+                    <div style={{ marginTop: 6, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <button
                         className="btn"
-                        onClick={() => navigator.clipboard.writeText(pgResult.dynamicQris)}
+                        onClick={() => {
+                          void navigator.clipboard.writeText(pgResult.dynamicQris);
+                          setPgCopied(true);
+                          setTimeout(() => setPgCopied(false), 1500);
+                        }}
                       >
-                        <Copy size={13} /> Copy String
+                        <Copy size={13} /> {pgCopied ? 'Tersalin!' : 'Copy String'}
                       </button>
-                      <a className="btn" href={pgResult.qrDataUrl} download="qris-dinamis.png">
+                      <a
+                        className="btn"
+                        href={pgResult.qrDataUrl}
+                        download="qris-dinamis.png"
+                        style={{ textDecoration: 'none' }}
+                      >
                         Download PNG
                       </a>
                     </div>
@@ -479,6 +515,32 @@ export default function App() {
                 >
                   {pgResult.dynamicQris}
                 </div>
+                {pgResult.tags && pgResult.tags.length > 0 && (
+                  <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 6 }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ textAlign: 'left', background: 'var(--surface-muted)', color: 'var(--text-muted)' }}>
+                          <th style={{ padding: '6px 8px' }}>Tag</th>
+                          <th style={{ padding: '6px 8px' }}>Field</th>
+                          <th style={{ padding: '6px 8px' }}>Len</th>
+                          <th style={{ padding: '6px 8px' }}>Value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pgResult.tags.map((t, idx) => (
+                          <tr key={`${t.tag}-${idx}`} style={{ borderTop: '1px solid var(--border)' }}>
+                            <td className="mono" style={{ padding: '5px 8px', fontWeight: 600 }}>{t.tag}</td>
+                            <td style={{ padding: '5px 8px', color: 'var(--text-muted)' }}>
+                              {TLV_TAG_LABELS[t.tag] ?? (Number(t.tag) >= 26 && Number(t.tag) <= 50 ? 'Merchant Account Info' : 'EMVCo Tag')}
+                            </td>
+                            <td className="mono tabular-nums" style={{ padding: '5px 8px' }}>{t.length}</td>
+                            <td className="mono" style={{ padding: '5px 8px', wordBreak: 'break-all' }}>{t.value}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             ) : (
               <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>

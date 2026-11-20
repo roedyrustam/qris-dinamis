@@ -156,11 +156,27 @@ export function QrisCheckout(props: QrisCheckoutProps) {
         </span>
       </div>
 
-      {transaction.qrSvg && (
+      {(transaction.qrDataUrl || transaction.qrSvg) && (
         <div
-          style={{ background: '#ffffff', padding: 12, borderRadius: 8, margin: '14px 0' }}
-          dangerouslySetInnerHTML={{ __html: transaction.qrSvg }}
-        />
+          style={{
+            background: '#ffffff',
+            padding: 12,
+            borderRadius: 8,
+            margin: '14px 0',
+            display: 'flex',
+            justifyContent: 'center',
+          }}
+        >
+          {transaction.qrDataUrl ? (
+            <img
+              src={transaction.qrDataUrl}
+              alt="QRIS Payment"
+              style={{ width: 240, height: 240, maxWidth: '100%', display: 'block', objectFit: 'contain' }}
+            />
+          ) : (
+            <div dangerouslySetInnerHTML={{ __html: transaction.qrSvg ?? '' }} />
+          )}
+        </div>
       )}
 
       <div style={{ fontSize: 22, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
