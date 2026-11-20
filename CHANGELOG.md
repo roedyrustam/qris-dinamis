@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.0] - 2026-11-20
+
+### Added & Hardened
+- **Webhook SSRF Protection & Bulk DLQ Replay (`@qris-dinamis/api`)**: Added `isBlockedWebhookUrl` blocking private/loopback/cloud-metadata IPs in production (`ALLOW_PRIVATE_WEBHOOKS`), plus `POST /v1/webhooks/retry-failed` for bulk Dead-Letter Queue replay.
+- **Cancel & Refund Lifecycle**: Added `POST /v1/qris/:id/cancel` (`payment.cancelled`) and `POST /v1/qris/:id/refund` (`payment.refunded`) with atomic transitions, SSE events, and typed `QrisDinamisClient` methods.
+- **Full Multi-Tenant Scoping**: Auto-scoped `GET /v1/qris`, `GET /v1/qris/export`, `GET /v1/webhooks/logs`, `POST /v1/webhooks/retry-failed`, and `POST /v1/ingest/notification` to `authMerchantId` when `REQUIRE_API_KEY=true`.
+- **Observability**: Added `X-Request-Id` correlation middleware and Prometheus `GET /metrics` exposition endpoint.
+- **Framework-Agnostic Webhook Handler (`@qris-dinamis/core`)**: Added `createWebhookHandler` (Web Standard `Request -> Response`) for Next.js, Hono, Cloudflare Workers, Bun, and Deno.
+- **Live Camera QR Scanner (`@qris-dinamis/web`)**: Added camera scanning (`getUserMedia` + `BarcodeDetector`) in `CpmTerminal.tsx`.
+
 ## [2.0.0] - 2026-11-20
 
 ### Added & Hardened

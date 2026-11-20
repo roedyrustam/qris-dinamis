@@ -15,11 +15,21 @@ import { z } from 'zod';
 import type { AppDatabase } from './db/client.js';
 import { ingestEvents, merchants, transactions, webhookLogs } from './db/schema.js';
 import { openApiSpec } from './openapi.js';
+import {
+  createMetricsRegistry,
+  formatPrometheusMetrics,
+  observabilityMiddleware,
+} from './middleware/observability.js';
 import { apiKeyAuth, getAuthMerchantId, rateLimiter } from './middleware/security.js';
 import { transactionEvents } from './services/events.js';
 import { bufferFromBase64, decodeQrisFromBuffer } from './services/qr-decoder.js';
-import { allocateUniqueCode, markTransactionPaid } from './services/transaction.js';
-import { retryWebhookById } from './services/webhook.js';
+import {
+  allocateUniqueCode,
+  cancelTransaction,
+  markTransactionPaid,
+  refundTransaction,
+} from './services/transaction.js';
+import { retryFailedWebhooks, retryWebhookById } from './services/webhook.js';
 import { resolveCpmAcquirer } from './verifiers/cpm-acquirer.js';
 import { verifierRegistry } from './verifiers/notification-parser.js';
 import {
@@ -140,22 +150,41 @@ function escapeCsvCell(value: unknown): string {
 
 export function createApp(db: AppDatabase) {
   const app = new Hono();
+  const metrics = createMetricsRegistry();
 
   app.use(
     '*',
     cors({
       origin: process.env.CORS_ORIGIN ?? '*',
       allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'X-Api-Key', 'Authorization'],
+      allowHeaders: ['Content-Type', 'X-Api-Key', 'Authorization', 'X-Request-Id'],
     }),
   );
 
+  app.use('*', observabilityMiddleware(metrics));
   app.use('*', rateLimiter());
   const requireApiKey = apiKeyAuth(db);
 
   app.get('/health', (c) =>
     c.json({ ok: true, service: 'qris-dinamis-api', timestamp: new Date().toISOString() }),
   );
+
+  app.get('/metrics', async (c) => {
+    const rows = await db.select({ status: transactions.status }).from(transactions);
+    const txCounts: Record<string, number> = {
+      PENDING: 0,
+      PAID: 0,
+      EXPIRED: 0,
+      FAILED: 0,
+      CANCELLED: 0,
+      REFUNDED: 0,
+    };
+    for (const r of rows) {
+      txCounts[r.status] = (txCounts[r.status] ?? 0) + 1;
+    }
+    c.header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+    return c.body(formatPrometheusMetrics(metrics, txCounts));
+  });
 
   app.get('/openapi.json', (c) => c.json(openApiSpec));
 
@@ -637,8 +666,9 @@ export function createApp(db: AppDatabase) {
     return c.json({ transaction: { ...tx, qrSvg, qrDataUrl } }, 201);
   });
 
-  app.get('/v1/qris', async (c) => {
-    const merchantId = c.req.query('merchantId');
+  app.get('/v1/qris', requireApiKey, async (c) => {
+    const authMerchantId = getAuthMerchantId(c);
+    const merchantId = authMerchantId ?? c.req.query('merchantId');
     const status = c.req.query('status');
 
     const conditions = [];
@@ -659,7 +689,8 @@ export function createApp(db: AppDatabase) {
   });
 
   app.get('/v1/qris/export', requireApiKey, async (c) => {
-    const merchantId = c.req.query('merchantId');
+    const authMerchantId = getAuthMerchantId(c);
+    const merchantId = authMerchantId ?? c.req.query('merchantId');
     const status = c.req.query('status');
     const format = c.req.query('format') === 'csv' ? 'csv' : 'json';
 
@@ -721,6 +752,37 @@ export function createApp(db: AppDatabase) {
     c.header('Content-Type', 'text/csv; charset=utf-8');
     c.header('Content-Disposition', 'attachment; filename="qris-transactions.csv"');
     return c.body(lines.join('\n'));
+  });
+
+  app.post('/v1/qris/:id/cancel', requireApiKey, async (c) => {
+    const id = c.req.param('id');
+    const [existing] = await db.select().from(transactions).where(eq(transactions.id, id));
+    if (!existing) return c.json({ error: 'Transaction not found' }, 404);
+    const authMerchantId = getAuthMerchantId(c);
+    if (authMerchantId && authMerchantId !== existing.merchantId) {
+      return c.json({ error: 'Forbidden: API key does not belong to this merchant' }, 403);
+    }
+    if (existing.status !== 'PENDING') {
+      return c.json({ error: `Cannot cancel transaction with status ${existing.status}` }, 409);
+    }
+    const result = await cancelTransaction(db, id);
+    return c.json(result);
+  });
+
+  app.post('/v1/qris/:id/refund', requireApiKey, async (c) => {
+    const id = c.req.param('id');
+    const [existing] = await db.select().from(transactions).where(eq(transactions.id, id));
+    if (!existing) return c.json({ error: 'Transaction not found' }, 404);
+    const authMerchantId = getAuthMerchantId(c);
+    if (authMerchantId && authMerchantId !== existing.merchantId) {
+      return c.json({ error: 'Forbidden: API key does not belong to this merchant' }, 403);
+    }
+    if (existing.status !== 'PAID') {
+      return c.json({ error: `Only PAID transactions can be refunded (current: ${existing.status})` }, 409);
+    }
+    const body = (await c.req.json().catch(() => ({}))) as { reason?: string };
+    const result = await refundTransaction(db, id, typeof body.reason === 'string' ? body.reason : undefined);
+    return c.json(result);
   });
 
   app.get('/v1/qris/:id', requireApiKey, async (c) => {
@@ -956,6 +1018,10 @@ export function createApp(db: AppDatabase) {
     }
 
     const input = parsed.data;
+    const authMerchantId = getAuthMerchantId(c);
+    if (authMerchantId && authMerchantId !== input.merchantId) {
+      return c.json({ error: 'Forbidden: API key does not belong to this merchant' }, 403);
+    }
     const [merchant] = await db.select().from(merchants).where(eq(merchants.id, input.merchantId));
     if (!merchant) return c.json({ error: 'Merchant not found' }, 404);
 
@@ -1059,7 +1125,8 @@ export function createApp(db: AppDatabase) {
   app.use('/v1/webhooks/*', requireApiKey);
 
   app.get('/v1/webhooks/logs', async (c) => {
-    const merchantId = c.req.query('merchantId');
+    const authMerchantId = getAuthMerchantId(c);
+    const merchantId = authMerchantId ?? c.req.query('merchantId');
     const logs = merchantId
       ? await db
           .select()
@@ -1069,6 +1136,13 @@ export function createApp(db: AppDatabase) {
           .limit(100)
       : await db.select().from(webhookLogs).orderBy(desc(webhookLogs.createdAt)).limit(100);
     return c.json({ logs });
+  });
+
+  app.post('/v1/webhooks/retry-failed', async (c) => {
+    const authMerchantId = getAuthMerchantId(c);
+    const merchantId = authMerchantId ?? c.req.query('merchantId');
+    const retriedCount = await retryFailedWebhooks(db, merchantId);
+    return c.json({ retriedCount });
   });
 
   app.post('/v1/webhooks/:id/retry', async (c) => {

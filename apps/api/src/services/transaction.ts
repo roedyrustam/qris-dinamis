@@ -119,3 +119,89 @@ export async function expireStaleTransactions(db: AppDatabase): Promise<number> 
 
   return expired.length;
 }
+
+/**
+ * Atomically cancels a PENDING transaction and dispatches the payment.cancelled webhook.
+ */
+export async function cancelTransaction(
+  db: AppDatabase,
+  transactionId: string,
+): Promise<{ transaction: TransactionRow | null; webhookTriggered: boolean }> {
+  const nowIso = new Date().toISOString();
+  const [updated] = await db
+    .update(transactions)
+    .set({ status: 'CANCELLED', updatedAt: nowIso })
+    .where(and(eq(transactions.id, transactionId), eq(transactions.status, 'PENDING')))
+    .returning();
+
+  if (!updated) return { transaction: null, webhookTriggered: false };
+
+  transactionEvents.emit({
+    transactionId: updated.id,
+    merchantId: updated.merchantId,
+    status: 'CANCELLED',
+    totalAmount: updated.totalAmount,
+    expiresAt: updated.expiresAt,
+    updatedAt: updated.updatedAt,
+  });
+
+  const [merchant] = await db.select().from(merchants).where(eq(merchants.id, updated.merchantId));
+  let webhookTriggered = false;
+  if (merchant?.webhookUrl) {
+    await dispatchWebhook(db, updated, merchant, 'payment.cancelled');
+    webhookTriggered = true;
+  }
+
+  return { transaction: updated, webhookTriggered };
+}
+
+/**
+ * Atomically refunds a PAID transaction and dispatches the payment.refunded webhook.
+ */
+export async function refundTransaction(
+  db: AppDatabase,
+  transactionId: string,
+  reason?: string,
+): Promise<{ transaction: TransactionRow | null; webhookTriggered: boolean }> {
+  const nowIso = new Date().toISOString();
+  const [existing] = await db.select().from(transactions).where(eq(transactions.id, transactionId));
+  if (!existing || existing.status !== 'PAID') {
+    return { transaction: null, webhookTriggered: false };
+  }
+
+  const prevMeta = existing.metadataJson ? (JSON.parse(existing.metadataJson) as Record<string, unknown>) : {};
+  const nextMeta = reason ? { ...prevMeta, refundReason: reason, refundedAt: nowIso } : { ...prevMeta, refundedAt: nowIso };
+
+  const [updated] = await db
+    .update(transactions)
+    .set({
+      status: 'REFUNDED',
+      metadataJson: JSON.stringify(nextMeta),
+      updatedAt: nowIso,
+    })
+    .where(and(eq(transactions.id, transactionId), eq(transactions.status, 'PAID')))
+    .returning();
+
+  if (!updated) return { transaction: null, webhookTriggered: false };
+
+  transactionEvents.emit({
+    transactionId: updated.id,
+    merchantId: updated.merchantId,
+    status: 'REFUNDED',
+    totalAmount: updated.totalAmount,
+    paidVia: updated.paidVia,
+    paidReference: updated.paidReference,
+    paidAt: updated.paidAt,
+    expiresAt: updated.expiresAt,
+    updatedAt: updated.updatedAt,
+  });
+
+  const [merchant] = await db.select().from(merchants).where(eq(merchants.id, updated.merchantId));
+  let webhookTriggered = false;
+  if (merchant?.webhookUrl) {
+    await dispatchWebhook(db, updated, merchant, 'payment.refunded');
+    webhookTriggered = true;
+  }
+
+  return { transaction: updated, webhookTriggered };
+}

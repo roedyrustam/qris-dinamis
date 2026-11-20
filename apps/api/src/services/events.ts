@@ -5,7 +5,7 @@ import tls from 'node:tls';
 export interface TransactionStatusEvent {
   transactionId: string;
   merchantId: string;
-  status: 'PENDING' | 'PAID' | 'EXPIRED';
+  status: 'PENDING' | 'PAID' | 'EXPIRED' | 'CANCELLED' | 'REFUNDED';
   totalAmount: number;
   paidVia?: string | null;
   paidReference?: string | null;

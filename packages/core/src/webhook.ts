@@ -63,3 +63,57 @@ export function verifyWebhookSignature({
   if (actualBuf.length !== expectedBuf.length) return false;
   return timingSafeEqual(actualBuf, expectedBuf);
 }
+
+export interface WebhookEventPayload {
+  id: string;
+  type: 'payment.paid' | 'payment.expired' | 'payment.cancelled' | 'payment.refunded' | string;
+  createdAt: string;
+  data: Record<string, unknown>;
+}
+
+export interface CreateWebhookHandlerOptions {
+  secret: string;
+  toleranceSeconds?: number;
+  onEvent: (event: WebhookEventPayload, rawBody: string) => void | Promise<void>;
+}
+
+/**
+ * Framework-agnostic Web Standard Request -> Response webhook handler
+ * (works in Next.js App Router, Hono, Cloudflare Workers, Bun, and Deno).
+ */
+export function createWebhookHandler(options: CreateWebhookHandlerOptions) {
+  return async (request: Request): Promise<Response> => {
+    const rawBody = await request.text();
+    const signatureHeader = request.headers.get('x-qris-signature');
+
+    const valid = verifyWebhookSignature({
+      secret: options.secret,
+      signatureHeader,
+      rawBody,
+      toleranceSeconds: options.toleranceSeconds ?? 300,
+    });
+
+    if (!valid) {
+      return new Response(JSON.stringify({ error: 'Invalid webhook signature' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    let event: WebhookEventPayload;
+    try {
+      event = JSON.parse(rawBody) as WebhookEventPayload;
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON payload' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    await options.onEvent(event, rawBody);
+    return new Response(JSON.stringify({ received: true, eventId: event.id ?? null }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+}

@@ -242,4 +242,21 @@ export class QrisDinamisClient {
       body: JSON.stringify(input),
     });
   }
+
+  cancelTransaction(transactionId: string) {
+    return this.request<{ transaction: TransactionRecord; webhookTriggered: boolean }>(
+      `/v1/qris/${encodeURIComponent(transactionId)}/cancel`,
+      { method: 'POST' },
+    );
+  }
+
+  refundTransaction(transactionId: string, reason?: string) {
+    return this.request<{ transaction: TransactionRecord; webhookTriggered: boolean }>(
+      `/v1/qris/${encodeURIComponent(transactionId)}/refund`,
+      {
+        method: 'POST',
+        body: JSON.stringify(reason ? { reason } : {}),
+      },
+    );
+  }
 }

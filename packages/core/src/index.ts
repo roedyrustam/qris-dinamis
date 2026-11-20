@@ -19,8 +19,11 @@ export { renderQrSvg, renderQrDataUrl, renderQrTerminal, type QrRenderOptions } 
 export {
   signWebhookPayload,
   verifyWebhookSignature,
+  createWebhookHandler,
   type SignWebhookInput,
   type VerifyWebhookInput,
+  type WebhookEventPayload,
+  type CreateWebhookHandlerOptions,
 } from './webhook.js';
 export {
   validateCpmQr,

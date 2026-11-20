@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { CheckCircle2, ScanLine, ShieldAlert } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Camera, CheckCircle2, ScanLine, ShieldAlert, X } from 'lucide-react';
 
 interface MerchantOption {
   id: string;
@@ -28,6 +28,66 @@ export function CpmTerminal({
     transaction?: { id: string; status: string; totalAmount: number; paidVia?: string | null; paidReference?: string | null };
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  function stopCamera() {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setCameraActive(false);
+  }
+
+  useEffect(() => {
+    return () => stopCamera();
+  }, []);
+
+  async function startCamera() {
+    setCameraError(null);
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError('Browser tidak mendukung akses kamera.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      streamRef.current = stream;
+      setCameraActive(true);
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          void videoRef.current.play();
+        }
+      }, 50);
+
+      const BarcodeDetectorCtor = (
+        window as unknown as { BarcodeDetector?: new (opts: { formats: string[] }) => { detect: (el: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> } }
+      ).BarcodeDetector;
+      if (!BarcodeDetectorCtor) {
+        setCameraError('Kamera aktif, tetapi browser ini tidak mendukung BarcodeDetector otomatis. Gunakan paste/scanner USB.');
+        return;
+      }
+
+      const detector = new BarcodeDetectorCtor({ formats: ['qr_code'] });
+      const scanLoop = async () => {
+        if (!streamRef.current || !videoRef.current) return;
+        try {
+          const codes = await detector.detect(videoRef.current);
+          if (codes[0]?.rawValue) {
+            setQrData(codes[0].rawValue);
+            stopCamera();
+            return;
+          }
+        } catch {
+          // Ignore transient frame decode errors
+        }
+        requestAnimationFrame(() => void scanLoop());
+      };
+      requestAnimationFrame(() => void scanLoop());
+    } catch {
+      setCameraError('Izin kamera ditolak atau perangkat kamera tidak tersedia.');
+    }
+  }
 
   const selectedMerchantId = merchantId || merchants[0]?.id || '';
 
@@ -120,6 +180,14 @@ export function CpmTerminal({
             type="button"
             className="btn"
             style={{ fontSize: 11, padding: '4px 8px' }}
+            onClick={() => (cameraActive ? stopCamera() : void startCamera())}
+          >
+            {cameraActive ? <X size={12} /> : <Camera size={12} />} {cameraActive ? 'Tutup Kamera' : 'Scan Kamera'}
+          </button>
+          <button
+            type="button"
+            className="btn"
+            style={{ fontSize: 11, padding: '4px 8px' }}
             onClick={() => setQrData(SAMPLE_DANA_CPM_B64)}
           >
             Sample DANA CPM (Approve)
@@ -133,6 +201,16 @@ export function CpmTerminal({
             Sample Decline (*0000)
           </button>
         </div>
+
+        {cameraError && <div style={{ fontSize: 12, color: 'var(--rose-text)' }}>{cameraError}</div>}
+        {cameraActive && (
+          <video
+            ref={videoRef}
+            muted
+            playsInline
+            style={{ width: '100%', maxHeight: 220, borderRadius: 8, border: '1px solid var(--border)', objectFit: 'cover' }}
+          />
+        )}
 
         <label style={{ fontSize: 12, fontWeight: 500 }}>
           External / POS Receipt ID
