@@ -1,7 +1,7 @@
 # Product Requirements Document (PRD) — QRIS Dinamis SDK & Webhook Engine
 
 ## 1. Ringkasan Produk
-**QRIS Dinamis (`v2.0.0`)** adalah monorepo TypeScript/Node.js yang menyediakan:
+**QRIS Dinamis (`v2.2.0`)** adalah monorepo TypeScript/Node.js yang menyediakan:
 1. **`@qris-dinamis/core`**: Package NPM untuk parsing, validasi, dan konversi **QRIS MPM** (EMVCo Static → Dynamic: `Tag 01`, `Tag 54`, `Tags 55–57`, `Tag 63`), validasi **QRIS CPM** (`validateCpmQr`, `buildSampleCpmQr`), renderer QR (SVG, PNG DataURL, Terminal ASCII), helper verifikasi HMAC-SHA256 webhook, dan typed `QrisDinamisClient`.
 2. **`@qris-dinamis/cli`**: CLI `qris-dinamis` untuk konversi, validasi, inspeksi MPM/CPM, dan pengujian webhook & parser notifikasi di terminal.
 3. **`@qris-dinamis/react`**: Komponen drop-in `<QrisCheckout />` dan hook `useQrisStatus` berbasis real-time SSE.

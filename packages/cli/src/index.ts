@@ -25,7 +25,7 @@ const DEFAULT_IO: CliIo = {
   fetchFn: fetch,
 };
 
-const HELP_TEXT = `qris-dinamis CLI v2.0.0
+const HELP_TEXT = `qris-dinamis CLI v2.2.0
 
 Usage:
   qris-dinamis convert <staticQris> --amount <idr> [options]
@@ -324,7 +324,7 @@ export async function runCli(argv: string[], io: CliIo = DEFAULT_IO): Promise<nu
     return 0;
   }
   if (command === '--version' || command === '-v') {
-    io.stdout('2.0.0');
+    io.stdout('2.2.0');
     return 0;
   }
 

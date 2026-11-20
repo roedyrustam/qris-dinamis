@@ -1,4 +1,4 @@
-# Dokumentasi Teknis — QRIS Dinamis v2.0.0 (MPM & CPM SDK, CLI, API & Webhook Engine)
+# Dokumentasi Teknis — QRIS Dinamis v2.2.0 (MPM & CPM SDK, CLI, API & Webhook Engine)
 
 ## 1. Instalasi & Menjalankan Lokal
 
@@ -88,6 +88,7 @@ app.post('/webhooks/qris', async (req, res) => {
 | Method | Endpoint | Deskripsi |
 | :--- | :--- | :--- |
 | `GET` | `/health` | Healthcheck server & database |
+| `GET` | `/metrics` | Metrik observabilitas format Prometheus (`qris_http_*`, `qris_transactions_total`) |
 | `GET` | `/docs` | Dokumentasi interaktif OpenAPI 3.1 (Scalar UI) |
 | `POST` | `/v1/merchants` | Daftarkan profil QRIS statis & webhook URL |
 | `POST` | `/v1/merchants/upload` | Daftarkan merchant dari unggahan gambar QRIS (PNG/JPG/Base64) |
@@ -104,7 +105,9 @@ app.post('/webhooks/qris', async (req, res) => {
 | `GET` | `/v1/qris` | Daftar transaksi (filter `merchantId`, `status`) |
 | `GET` | `/v1/qris/export` | Ekspor transaksi ke `csv` atau `json` |
 | `GET` | `/v1/qris/:id` | Cek status transaksi, `merchantName`, & QR SVG/DataURL |
-| `GET` | `/v1/transactions/:id/events` | Real-time SSE stream (`PENDING` → `PAID` / `EXPIRED`) |
+| `POST` | `/v1/qris/:id/cancel` | Batalkan transaksi `PENDING` (`payment.cancelled`) |
+| `POST` | `/v1/qris/:id/refund` | Refund transaksi `PAID` (`payment.refunded`) |
+| `GET` | `/v1/transactions/:id/events` | Real-time SSE stream (`PENDING` → `PAID` / `EXPIRED` / `CANCELLED` / `REFUNDED`) |
 | `GET` | `/v1/ingest/adapters` | Daftar 13 adapter notifikasi bank & e-wallet Indonesia |
 | `GET` | `/v1/ingest/events` | Daftar log event ingest notifikasi terbaru |
 | `POST` | `/v1/ingest/parse-preview` | Dry-run uji ekstraksi notifikasi tanpa mutasi DB |
@@ -112,4 +115,5 @@ app.post('/webhooks/qris', async (req, res) => {
 | `POST` | `/v1/ingest/pg/:provider` | Webhook PG resmi (`doku`, `snap-bi`, `midtrans`) |
 | `POST` | `/v1/sandbox/simulate-pay` | Simulasi pembayaran sukses untuk testing |
 | `GET` | `/v1/webhooks/logs` | Daftar log pengiriman webhook |
+| `POST` | `/v1/webhooks/retry-failed` | Replay massal webhook berstatus `FAILED` (DLQ) |
 | `POST` | `/v1/webhooks/:id/retry` | Kirim ulang webhook secara manual |

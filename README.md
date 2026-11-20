@@ -207,6 +207,7 @@ Configure via `.env` or container environment variables:
 | `MIDTRANS_SERVER_KEY` | *(unset)* | Optional Midtrans server key for SHA-512 verification on `/v1/ingest/pg/midtrans`. |
 | `CPM_ACQUIRER_URL` | *(unset)* | Optional SNAP BI / DANA QRIS CPM acquirer endpoint URL (defaults to `SandboxCpmAcquirer`). |
 | `CPM_ACQUIRER_TOKEN` | *(unset)* | Optional Bearer token sent to `CPM_ACQUIRER_URL`. |
+| `ALLOW_PRIVATE_WEBHOOKS` | `true` (dev) / `false` (prod) | Controls SSRF protection blocking private/loopback/cloud-metadata webhook target hosts. |
 
 ---
 

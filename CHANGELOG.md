@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.0] - 2026-11-20
+
+### Fixed & Improved
+- **EMVCo Static-to-Dynamic QRIS Spec Compliance (`@qris-dinamis/core`)**:
+  - Updated `computeCrc16` to hash UTF-8 bytes and `verifyCrc16` to trim trailing whitespace/newlines.
+  - Enforced canonical `Tag 53 → 54 → 55 → 56/57 → 58` ordering, EMVCo `Tag 54/56` max 13 chars, and `Tag 57` percentage range `0.01–99.99`.
+  - Added mandatory MAI (`Tags 26–51`) validation, `additionalData` (`Tag 62` sub-tag merge preserving `62-07`), and `Tag 51` National NMID extraction priority.
+- **Unclipped QR Code Rendering & TLV Inspector (`@qris-dinamis/web`, `@qris-dinamis/react`)**:
+  - Fixed cropped QR preview by rendering full scannable `qrDataUrl` inside quiet-zone containers (`App.tsx`, `CheckoutPage.tsx`, `packages/react`).
+  - Added live **EMVCo TLV Inspector** table and clipboard feedback in MPM Playground.
+
 ## [2.1.0] - 2026-11-20
 
 ### Added & Hardened
